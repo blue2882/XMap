@@ -25,12 +25,10 @@
   --f-body: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
+html[data-theme="dark"] {
     --bg: #101116; --dot: #292B35; --panel: rgba(35,36,44,.88); --ink: #F5F5FA; --ink2: #A0A2AE; --line: rgba(160,165,185,.22);
     --on: #0C171C; --sel: #E6EFEE;
     --b0: #0A84FF; --b1: #FF6482; --b2: #30D158; --b3: #FF9F0A; --b4: #BF5AF2; --b5: #FFD60A;
-  }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; margin: 0; }
@@ -83,6 +81,14 @@ body {
 #busy .bar2 i { display: block; height: 100%; width: 30%; background: var(--b0); border-radius: 3px; animation: slide 1.3s ease-in-out infinite; }
 @keyframes slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 
+/* ---- account + theme ---- */
+.authbox { border:1px solid var(--line); background:var(--panel); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px; max-width:640px; backdrop-filter:blur(18px); }
+.authbox .field {display:flex; flex-direction:column; gap:6px}
+.authbox input {width:100%; font:16px var(--f-body); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:11px; min-height:42px}
+.authbox .row {display:flex; gap:8px; flex-wrap:wrap}
+.authbox p,.subtle {margin:0;color:var(--ink2);font-size:13px}
+.accountbar {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#authStatus {font-size:12px;color:var(--ink2)}
 /* ---- editor ---- */
 .app { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; padding-block: 10px; }
 .edHead { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -170,6 +176,67 @@ body {
 .app.map-fullscreen .hint { display:none; }
 @supports (backdrop-filter: blur(1px)) { .card, .set, .panel { backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* iPadOS 26-inspired adaptive workspace: Liquid Glass, pointer affordances, and resizable-window layouts. */
+:root { --glass: color-mix(in srgb, var(--panel) 82%, transparent); --glass-edge: color-mix(in srgb, var(--ink) 10%, transparent); }
+body { background: radial-gradient(ellipse at 12% -10%, color-mix(in srgb, var(--b0) 9%, transparent), transparent 42%), var(--bg); }
+.btn { border-color: var(--glass-edge); background: var(--glass); box-shadow: inset 0 1px 0 color-mix(in srgb, white 28%, transparent), 0 2px 8px color-mix(in srgb, var(--ink) 5%, transparent); transition: transform .16s ease, background .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--b0) 92%, white), var(--b0)); color: white; border-color: color-mix(in srgb, var(--b0) 78%, white); box-shadow: 0 5px 16px color-mix(in srgb, var(--b0) 20%, transparent), inset 0 1px 0 #ffffff55; }
+.card, .set, .authbox, .panel { border-color: var(--glass-edge); box-shadow: 0 10px 36px color-mix(in srgb, var(--ink) 6%, transparent), inset 0 1px 0 color-mix(in srgb, white 20%, transparent); }
+.libHead { position: sticky; top: 0; z-index: 12; padding: 10px 12px; margin: -10px -12px 0; border: 1px solid var(--glass-edge); border-radius: 24px; background: var(--glass); backdrop-filter: saturate(180%) blur(28px); -webkit-backdrop-filter: saturate(180%) blur(28px); box-shadow: 0 8px 30px color-mix(in srgb, var(--ink) 5%, transparent); }
+.libHead h1 { font-size: clamp(28px, 3vw, 38px); }
+#libScreen { padding-top: 12px; }
+.folderbar { position: sticky; top: 72px; z-index: 10; padding: 8px 10px; border: 1px solid var(--glass-edge); border-radius: 18px; background: var(--glass); backdrop-filter: saturate(180%) blur(22px); -webkit-backdrop-filter: saturate(180%) blur(22px); }
+#view { border-color: var(--glass-edge); box-shadow: 0 10px 36px color-mix(in srgb, var(--ink) 7%, transparent); }
+.edHead { padding: 7px 9px; border: 1px solid var(--glass-edge); border-radius: 23px; background: var(--glass); backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 5%, transparent); }
+.bar { padding: 7px; border: 1px solid var(--glass-edge); border-radius: 22px; background: var(--glass); backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px); box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 5%, transparent); overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+.bar::-webkit-scrollbar { display: none; }
+.bar .sep { min-height: 24px; }
+.node { box-shadow: 0 3px 12px color-mix(in srgb, var(--ink) 7%, transparent); transition: box-shadow .16s ease, filter .16s ease; }
+.panel { border-radius: 24px; }
+.shortcut-backdrop { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); background: color-mix(in srgb, #000 26%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.shortcut-sheet { width: min(520px, 100%); max-height: min(78dvh, 700px); overflow: auto; padding: 22px; border: 1px solid var(--glass-edge); border-radius: 28px; color: var(--ink); background: var(--glass); backdrop-filter: saturate(180%) blur(34px); -webkit-backdrop-filter: saturate(180%) blur(34px); box-shadow: 0 24px 90px #0003, inset 0 1px 0 #ffffff55; }
+.sheet-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.sheet-head h2 { margin:0; font:700 23px/1.15 var(--f-display); letter-spacing:-.03em; }
+.shortcut-list { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:13px 20px; }
+kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srgb,var(--ink) 6%,var(--panel)); border:1px solid var(--line); border-radius:8px; padding:5px 8px; white-space:nowrap; }
+.shortcut-sheet .subtle { margin-top:18px; }
+@media (hover:hover) and (pointer:fine) {
+ .btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--b0) 40%, var(--line)); box-shadow: 0 5px 18px color-mix(in srgb, var(--ink) 9%, transparent), inset 0 1px 0 #ffffff55; }
+ .card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+ .card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--b0) 28%, var(--line)); box-shadow: 0 14px 38px color-mix(in srgb, var(--ink) 9%, transparent); }
+ .node:hover { filter: brightness(1.035); box-shadow: 0 5px 18px color-mix(in srgb, var(--ink) 12%, transparent); }
+}
+/* Landscape iPad / Stage Manager windows: a compact two-column library and a persistent inspector. */
+@media (min-width: 900px) and (min-height: 600px) {
+ body { padding-left:max(22px,env(safe-area-inset-left,0px)); padding-right:max(22px,env(safe-area-inset-right,0px)); }
+ #libScreen .libwrap { max-width: 1500px; }
+ #libScreen .grid { grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr)); gap: 16px; }
+ .app { gap: 9px; }
+ .main { grid-template-columns: minmax(0,1fr) minmax(260px, 310px); gap: 12px; }
+ .panel { max-height: none; }
+ .bar { gap: 7px; }
+}
+/* Compact Stage Manager / split-view widths and portrait tablets. */
+@media (min-width: 600px) and (max-width: 899px) {
+ body { padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+ .grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+ .edHead { gap:7px; }
+ .bar { gap:5px; }
+ .panel { max-height: 34vh; }
+}
+@media (max-width: 599px) {
+ .libHead { top:0; border-radius:20px; }
+ .libHead h1 { width:100%; margin-bottom:3px; }
+ .folderbar { top: 112px; }
+ .bar { margin-inline:-2px; }
+ .app { padding-top:4px; }
+ #mapName { font-size:17px; }
+ .shortcut-sheet { padding:18px; border-radius:24px; }
+}
+@media (prefers-reduced-transparency: reduce) { .btn, .card, .set, .authbox, .panel, .libHead, .folderbar, .edHead, .bar, .shortcut-sheet { backdrop-filter:none; -webkit-backdrop-filter:none; background:var(--panel); } }
+@media (prefers-reduced-motion: reduce) { .card, .node, .btn { transition:none !important; } }
+
 </style>
 </head>
 <body>
@@ -181,8 +248,18 @@ body {
       <button class="btn primary" id="lNew">New map</button>
       <button class="btn" id="lImport">Import decks or maps</button>
       <button class="btn" id="lSet">AI settings</button>
+      <button class="btn" id="themeToggle" aria-label="Toggle light and dark mode">☾ Dark mode</button>
     </div>
-    <p class="lead">Turn PowerPoint decks into editable mind maps. Your edits save automatically on this device.</p>
+    <p class="lead">Turn PowerPoint decks into editable mind maps. Sign in to sync maps and folders across devices.</p>
+    <div class="accountbar"><span id="authStatus" role="status">Not signed in · saving on this device</span><button class="btn" id="authToggle">Sign in / Create account</button><button class="btn" id="signOut" hidden>Sign out</button></div>
+    <div class="authbox" id="authBox" hidden>
+      <strong>Sign in to Mind Maps</strong>
+      <div class="field"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+      <div class="field"><label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div>
+      <div class="row"><button class="btn primary" id="emailSignIn">Sign in</button><button class="btn" id="emailSignUp">Create account</button><button class="btn" id="googleSignIn">Continue with Google</button><button class="btn" id="passwordReset">Reset password</button></div>
+      <p id="authMessage" aria-live="polite">Configure your Supabase project below to enable account access.</p>
+      <details><summary>Supabase connection settings</summary><div class="field"><label for="sbUrl">Project URL</label><input id="sbUrl" type="url" placeholder="https://your-project.supabase.co" autocomplete="url"></div><div class="field"><label for="sbKey">Publishable / anon key</label><input id="sbKey" type="password" placeholder="sb_publishable_… or anon key" autocomplete="off"></div><button class="btn" id="saveSupabase">Save connection settings</button><p>Use only your Supabase project URL and publishable (anon) key here. Never put a service-role key in a browser app.</p></details>
+    </div>
     <div class="folderbar"><label for="folderFilter">Folder</label><select id="folderFilter" aria-label="Filter maps by folder"><option value="__all">All folders</option></select><button class="btn" id="lFolder">＋ New folder</button><span id="saveStatus" role="status">Saved on this device</span></div>
     <div class="tip" id="installTip" hidden>To install: tap the Share button in Safari, then Add to Home Screen. The app then opens full screen and works offline. Maps are stored on this device, so use Export on a card to keep a backup.</div>
     <div class="set" id="aiSet" hidden>
@@ -200,6 +277,7 @@ body {
   <div class="app" id="app">
     <div class="edHead">
       <button class="btn" id="bBack">‹ Library</button>
+      <button class="btn" id="themeToggleEditor" aria-label="Toggle light and dark mode">☾</button>
       <input id="mapName" type="text" aria-label="Map name">
       <span class="count" id="count"></span>
     </div>
@@ -223,6 +301,7 @@ body {
       <button class="btn" id="bPanel">Details</button>
       <button class="btn" id="bExportMap">Export map</button>
       <button class="btn" id="bExport">Outline</button>
+      <button class="btn" id="bShortcuts" aria-label="Show keyboard shortcuts">⌘ Shortcuts</button>
     </div>
     <div class="main">
       <div id="view" tabindex="0" aria-label="Mind map canvas">
@@ -241,13 +320,64 @@ body {
     </div>
   </div>
 </div>
+<div id="shortcutSheet" class="shortcut-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="shortcutTitle">
+  <section class="shortcut-sheet">
+    <div class="sheet-head"><h2 id="shortcutTitle">Keyboard shortcuts</h2><button class="btn sm" id="shortcutClose" aria-label="Close shortcuts">✕</button></div>
+    <div class="shortcut-list"><span>New map</span><kbd>⌘ N</kbd><span>Import a presentation</span><kbd>⌘ O</kbd><span>Save now</span><kbd>⌘ S</kbd><span>Undo / Redo</span><kbd>⌘ Z / ⇧ ⌘ Z</kbd><span>Fit map to view</span><kbd>0</kbd><span>Full-screen canvas</span><kbd>⇧ ⌘ F</kbd><span>Add child / sibling</span><kbd>Tab / Enter</kbd><span>Rename selected node</span><kbd>F2</kbd></div>
+    <p class="subtle">On Windows, use Ctrl instead of ⌘. Shortcuts are disabled while typing in text fields.</p>
+  </section>
+</div>
 <div id="busy" hidden><div class="box"><h2 id="busyT">Building map</h2><p id="busyP"></p><div class="bar2"><i></i></div><button class="btn" id="busyX">Cancel</button></div></div>
 <div id="toast" hidden></div>
 
 <script src="jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
   var LKEY = 'mindmaps-library-v1';
+  /* Theme preference is explicit and persists independently of system appearance. */
+  var THEMEKEY='mindmaps-theme-v1';
+  function applyTheme(theme){ theme=(theme==='dark'?'dark':'light'); document.documentElement.setAttribute('data-theme',theme); try{localStorage.setItem(THEMEKEY,theme)}catch(e){}; var a=$('themeToggle'),b=$('themeToggleEditor'); if(a)a.textContent=theme==='dark'?'☀ Light mode':'☾ Dark mode'; if(b)b.textContent=theme==='dark'?'☀':'☾'; }
+  var initialTheme='light'; try{initialTheme=localStorage.getItem(THEMEKEY)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}
+  applyTheme(initialTheme);
+  function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')}
+  /* Supabase auth + private cloud library. Connection settings are per-browser. */
+  var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=false, cloudChannel=null, lastCloudStamp=0;
+  var SBKEY='mindmaps-supabase-config-v1';
+  function readSbConfig(){try{return JSON.parse(localStorage.getItem(SBKEY)||'{}')}catch(e){return {}}}
+  function setAuthMessage(msg){var el=$('authMessage');if(el)el.textContent=msg;}
+  function authStatus(msg){var el=$('authStatus');if(el)el.textContent=msg;}
+  function initSupabase(){
+    var cfg=readSbConfig(); if($('sbUrl'))$('sbUrl').value=cfg.url||''; if($('sbKey'))$('sbKey').value=cfg.key||'';
+    if(!cfg.url||!cfg.key||!window.supabase||!window.supabase.createClient){sbClient=null;return false;}
+    try{sbClient=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});return true}catch(e){sbClient=null;return false;}
+  }
+  function setSignedIn(user){sbUser=user||null; $('signOut').hidden=!sbUser; $('authToggle').textContent=sbUser?'Account':'Sign in / Create account'; authStatus(sbUser?'Signed in as '+(sbUser.email||'Google user')+' · cloud sync enabled':'Not signed in · saving on this device');}
+  function syncCloudNow(){
+    if(!sbClient||!sbUser||!lib)return Promise.resolve();
+    if(cloudBusy){cloudAgain=true;return Promise.resolve();} cloudBusy=true;
+    var snapshot=JSON.parse(JSON.stringify(lib));
+    return sbClient.from('mindmap_libraries').upsert({user_id:sbUser.id,data:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'}).then(function(res){if(res.error)throw res.error;authStatus('Signed in · cloud saved '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));}).catch(function(err){authStatus('Cloud save failed · '+(err.message||'check Supabase setup'));}).finally(function(){cloudBusy=false;if(cloudAgain){cloudAgain=false;syncCloudNow();}});
+  }
+  function scheduleCloudSync(){if(!sbUser||!sbClient)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(syncCloudNow,650);}
+  function loadCloudLibrary(){
+    if(!sbClient||!sbUser)return Promise.resolve();
+    authStatus('Loading your cloud library…');
+    return sbClient.from('mindmap_libraries').select('data').eq('user_id',sbUser.id).maybeSingle().then(function(res){
+      if(res.error)throw res.error;
+      if(res.data&&res.data.data&&Array.isArray(res.data.data.maps)){lib=res.data.data;lib.folders=Array.isArray(lib.folders)?lib.folders:[];lib.maps.forEach(function(m){if(!m.folder)m.folder='Unfiled'});localStorage.setItem(LKEY,JSON.stringify(lib));lastCloudStamp=Date.parse(res.data.updated_at||'')||Date.now();renderLib();authStatus('Signed in · cloud library loaded');}
+      else { /* First login: preserve and upload this device's existing maps. */ return syncCloudNow().then(function(){renderLib();}); }
+    }).catch(function(err){authStatus('Cloud load failed · '+(err.message||'check database setup'));setAuthMessage('Could not load cloud data. Check that the SQL setup was run and Row Level Security is enabled.');});
+  }
+  function subscribeCloud(){if(!sbClient||!sbUser)return;if(cloudChannel){sbClient.removeChannel(cloudChannel);cloudChannel=null;}cloudChannel=sbClient.channel('mindmap-library-'+sbUser.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'mindmap_libraries',filter:'user_id=eq.'+sbUser.id},function(payload){var row=payload.new;if(!row||!row.data)return;var stamp=Date.parse(row.updated_at||'')||Date.now();if(stamp<=lastCloudStamp)return;lastCloudStamp=stamp;lib=row.data;lib.folders=Array.isArray(lib.folders)?lib.folders:[];lib.maps=Array.isArray(lib.maps)?lib.maps:[];try{localStorage.setItem(LKEY,JSON.stringify(lib))}catch(e){};if(!$('edScreen').hidden){var activeId=cur&&cur.id;renderLib();if(activeId&&lib.maps.some(function(m){return m.id===activeId})){cur=lib.maps.find(function(m){return m.id===activeId});root=cur.root;render();}else showLib();}else renderLib();authStatus('Synced changes from another device');}).subscribe();}
+  function refreshAuth(){
+    if(!initSupabase()){setSignedIn(null);return;}
+    sbClient.auth.getSession().then(function(r){if(r.error)throw r.error;var u=r.data.session&&r.data.session.user;setSignedIn(u);if(u){loadCloudLibrary();subscribeCloud();}}).catch(function(e){setAuthMessage(e.message||'Could not check login status.');});
+    sbClient.auth.onAuthStateChange(function(event,session){var u=session&&session.user;setSignedIn(u);if(event==='SIGNED_IN'&&u){setTimeout(function(){loadCloudLibrary();subscribeCloud();},0);$('authBox').hidden=true;} if(event==='SIGNED_OUT'){if(cloudChannel){sbClient.removeChannel(cloudChannel);cloudChannel=null;}} });
+  }
+  function authAction(promise,success){setAuthMessage('Please wait…');Promise.resolve(promise).then(function(r){if(r&&r.error)throw r.error;if(success)setAuthMessage(success);else setAuthMessage('Check your email if confirmation is required.');}).catch(function(e){setAuthMessage(e.message||'Authentication failed.');});}
+  document.addEventListener('DOMContentLoaded',function(){ });
+  
   var uid = function () { return 'n' + Math.random().toString(36).slice(2, 9); };
   var $ = function (id) { return document.getElementById(id); };
   function T(t, ch, o) { o = o || {}; return { id: uid(), t: t, n: o.n || '', k: o.k || '', c: !!o.c, col: o.col, ch: ch || [] }; }
@@ -358,7 +488,7 @@ body {
     return null;
   }
   function saveLib() {
-    try { localStorage.setItem(LKEY, JSON.stringify(lib)); var st = $('saveStatus'); if(st) st.textContent = 'Saved · ' + new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); return true; }
+    try { localStorage.setItem(LKEY, JSON.stringify(lib)); var st = $('saveStatus'); if(st) st.textContent = sbUser ? 'Saved locally · syncing…' : 'Saved on this device'; scheduleCloudSync(); return true; }
     catch (e) { toast('Couldn’t save. Storage may be full, so export your maps.'); return false; }
   }
   lib = loadLib();
@@ -1013,10 +1143,44 @@ body {
   });
   window.addEventListener('resize', function () { if (!$('edScreen').hidden) applyView(); });
 
+  /* iPadOS-style keyboard command layer and drag/drop import affordances. */
+  function showShortcuts(show){var el=$('shortcutSheet');if(!el)return;el.hidden=!show;if(show)$('shortcutClose').focus();else if($('bShortcuts'))$('bShortcuts').focus();}
+  if($('bShortcuts'))$('bShortcuts').addEventListener('click',function(){showShortcuts(true)});
+  if($('shortcutClose'))$('shortcutClose').addEventListener('click',function(){showShortcuts(false)});
+  if($('shortcutSheet'))$('shortcutSheet').addEventListener('click',function(e){if(e.target===$('shortcutSheet'))showShortcuts(false)});
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&!$('shortcutSheet').hidden){showShortcuts(false);return;}
+    var mod=e.metaKey||e.ctrlKey;if(!mod||e.altKey)return;
+    var target=e.target,typing=target&&(target.tagName==='INPUT'||target.tagName==='TEXTAREA'||target.isContentEditable);
+    if(e.key.toLowerCase()==='/'&&!typing){e.preventDefault();showShortcuts(true);return;}
+    if(typing)return;
+    var k=e.key.toLowerCase();
+    if(k==='n'&&$('edScreen').hidden){e.preventDefault();$('lNew').click();}
+    else if(k==='o'&&$('edScreen').hidden){e.preventDefault();$('lImport').click();}
+    else if(k==='s'){e.preventDefault();if(!$('edScreen').hidden&&typeof persist==='function')persist();else if(typeof saveLib==='function')saveLib();if(typeof toast==='function')toast('Saved.');}
+    else if(k==='f'&&e.shiftKey&&!$('edScreen').hidden){e.preventDefault();setFullscreen(!app.classList.contains('map-fullscreen'));}
+  });
+  /* Drag a PowerPoint or JSON map onto the library to import it. */
+  var dropDepth=0;
+  $('libScreen').addEventListener('dragenter',function(e){if(!e.dataTransfer||!Array.from(e.dataTransfer.types||[]).includes('Files'))return;e.preventDefault();dropDepth++;$('libScreen').classList.add('drop-target');});
+  $('libScreen').addEventListener('dragover',function(e){if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
+  $('libScreen').addEventListener('dragleave',function(e){e.preventDefault();dropDepth=Math.max(0,dropDepth-1);if(!dropDepth)$('libScreen').classList.remove('drop-target');});
+  $('libScreen').addEventListener('drop',function(e){e.preventDefault();dropDepth=0;$('libScreen').classList.remove('drop-target');var files=Array.from(e.dataTransfer&&e.dataTransfer.files||[]).filter(function(f){return /\.(pptx|json)$/i.test(f.name)});if(!files.length){toast('Drop a .pptx presentation or .json mind map.');return;}var input=$('file');try{var dt=new DataTransfer();files.forEach(function(f){dt.items.add(f)});input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));}catch(err){toast('Use Import decks or maps to select these files.');}});
+
   /* ---------- boot ---------- */
-  var standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  /* Account and appearance controls */
+  $('themeToggle').addEventListener('click',toggleTheme); $('themeToggleEditor').addEventListener('click',toggleTheme);
+  $('authToggle').addEventListener('click',function(){$('authBox').hidden=!$('authBox').hidden;if(!$('authBox').hidden)initSupabase();});
+  $('saveSupabase').addEventListener('click',function(){var url=$('sbUrl').value.trim().replace(/\/$/,''),key=$('sbKey').value.trim();if(!/^https:\/\/[a-zA-Z0-9.-]+$/.test(url)||!key){setAuthMessage('Enter a valid Supabase project URL and publishable/anon key.');return;}localStorage.setItem(SBKEY,JSON.stringify({url:url,key:key}));setAuthMessage('Settings saved. Connecting…');refreshAuth();});
+  $('emailSignUp').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}var email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||password.length<6){setAuthMessage('Enter an email and a password of at least 6 characters.');return;}authAction(sbClient.auth.signUp({email:email,password:password,options:{emailRedirectTo:location.origin+location.pathname}}),'Account created. Check your email if confirmation is enabled.');});
+  $('emailSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}authAction(sbClient.auth.signInWithPassword({email:$('authEmail').value.trim(),password:$('authPassword').value}));});
+  $('googleSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}authAction(sbClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}));});
+  $('passwordReset').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}var email=$('authEmail').value.trim();if(!email){setAuthMessage('Enter your email address first.');return;}authAction(sbClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}),'Password reset email requested.');});
+  $('signOut').addEventListener('click',function(){if(sbClient)authAction(sbClient.auth.signOut(),'Signed out. Your local copy remains on this device.');});
+    var standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   $('installTip').hidden = standalone;
   showLib();
+  refreshAuth();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
   window.__mm = { pptxToMap: pptxToMap };
 })();

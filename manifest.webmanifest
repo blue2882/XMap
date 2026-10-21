@@ -1,7 +1,7 @@
 {
  "name": "Mind Maps",
  "short_name": "Mind Maps",
- "description": "Editable mind maps for study decks, works offline.",
+ "description": "AI-assisted editable mind maps with iPad-friendly workspace, folders, and cloud sync.",
  "start_url": "./index.html",
  "scope": "./",
  "display": "standalone",
