@@ -1,4 +1,4 @@
-const V = 'mindmaps-v4-ipados26';
+const V = 'mindmaps-v5-ipados26-fix1';
 const FILES = ['./', './index.html', './manifest.webmanifest', './jszip.min.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

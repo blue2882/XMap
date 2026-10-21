@@ -31,6 +31,7 @@ html[data-theme="dark"] {
     --b0: #0A84FF; --b1: #FF6482; --b2: #30D158; --b3: #FF9F0A; --b4: #BF5AF2; --b5: #FFD60A;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.4; overflow: hidden;
@@ -379,7 +380,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   document.addEventListener('DOMContentLoaded',function(){ });
   
   var uid = function () { return 'n' + Math.random().toString(36).slice(2, 9); };
-  var $ = function (id) { return document.getElementById(id); };
+  function $(id) { return document.getElementById(id); }
   function T(t, ch, o) { o = o || {}; return { id: uid(), t: t, n: o.n || '', k: o.k || '', c: !!o.c, col: o.col, ch: ch || [] }; }
   function Q(t, n, ch) { return T(t, ch, { n: n, k: 'q' }); }
 
