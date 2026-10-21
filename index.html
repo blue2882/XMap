@@ -18,18 +18,18 @@
    Palette: histology stains, one per branch. */
 :root {
   color-scheme: light dark;
-  --bg: #E9EFEE; --dot: #B5C4C3; --panel: #F8FBFA; --ink: #12232B; --ink2: #4A5F68; --line: #C4D2D1;
-  --on: #FFFFFF; --sel: #12232B;
-  --b0: #2B6CB6; --b1: #C23A6C; --b2: #1F8A5E; --b3: #D45F26; --b4: #7A4DB4; --b5: #A57B0E;
+  --bg: #F2F2F7; --dot: #D3D5DE; --panel: rgba(255,255,255,.82); --ink: #171923; --ink2: #686B78; --line: rgba(120,125,145,.22);
+  --on: #FFFFFF; --sel: #0A84FF;
+  --b0: #0A84FF; --b1: #FF375F; --b2: #30D158; --b3: #FF9F0A; --b4: #BF5AF2; --b5: #FFD60A;
   --f-display: ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", system-ui, sans-serif;
   --f-body: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0F1A1F; --dot: #2A3C43; --panel: #16262D; --ink: #E6EFEE; --ink2: #93A9B0; --line: #2C4048;
+    --bg: #101116; --dot: #292B35; --panel: rgba(35,36,44,.88); --ink: #F5F5FA; --ink2: #A0A2AE; --line: rgba(160,165,185,.22);
     --on: #0C171C; --sel: #E6EFEE;
-    --b0: #6DA6EC; --b1: #F27FA6; --b2: #52C898; --b3: #F49A5F; --b4: #AD8CE6; --b5: #DDB848;
+    --b0: #0A84FF; --b1: #FF6482; --b2: #30D158; --b3: #FF9F0A; --b4: #BF5AF2; --b5: #FFD60A;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -42,7 +42,7 @@ body {
 .screen { height: 100%; }
 .btn {
   flex: none; font: 500 14px var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
-  border-radius: 9px; padding: 0 14px; min-height: 40px; cursor: pointer; white-space: nowrap;
+  border-radius: 999px; padding: 0 15px; min-height: 42px; backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); cursor: pointer; white-space: nowrap;
 }
 .btn:active:not(:disabled) { background: color-mix(in srgb, var(--ink) 8%, var(--panel)); }
 .btn:disabled { opacity: .38; }
@@ -59,7 +59,7 @@ body {
 .lead { margin: 0; color: var(--ink2); max-width: 62ch; }
 .tip { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px; color: var(--ink2); font-size: 13.5px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 16px; box-shadow: 0 8px 28px rgba(20,25,45,.045); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .card .open { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 64px; }
 .card .open:focus-visible { outline: 2px solid var(--b0); outline-offset: 4px; border-radius: 6px; }
 .card .name { font: 700 18px/1.2 var(--f-display); overflow-wrap: anywhere; text-wrap: balance; }
@@ -68,7 +68,7 @@ body {
 .card .dots i { width: 14px; height: 6px; border-radius: 3px; }
 .card .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .empty { color: var(--ink2); padding: 30px 0; }
-.set { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
+.set { border: 1px solid var(--line); background: var(--panel); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
 .set label.l { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink2); }
 .set input[type=text], .set input[type=password] { width: 100%; font: 400 16px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-height: 42px; }
 .set .field { display: flex; flex-direction: column; gap: 6px; }
@@ -96,7 +96,7 @@ body {
 .app:not(.panel-open) .main { grid-template-columns: minmax(0, 1fr); }
 .app:not(.panel-open) .panel { display: none; }
 #view {
-  position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; min-height: 0; touch-action: none;
+  position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; min-height: 0; touch-action: none;
   background-color: var(--bg); background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.6px); background-size: 24px 24px;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
@@ -127,7 +127,7 @@ body {
 }
 .node.L .tog { right: auto; left: -15px; }
 .hint { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); font-size: 12px; color: var(--ink2); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; pointer-events: none; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; -webkit-overflow-scrolling: touch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; -webkit-overflow-scrolling: touch; }
 .panel h2 { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink2); margin: 0; }
 .panel label.l { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink2); }
 .panel input[type=text], .panel textarea { width: 100%; font: 400 16px/1.45 var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
@@ -148,7 +148,27 @@ body {
   .app:not(.panel-open) .main { grid-template-rows: minmax(0, 1fr); }
   .panel { max-height: 40vh; }
   .hint { display: none; }
+  .libHead h1 { font-size: 34px; }
+  .libHead { gap: 8px; }
+  .app { gap: 7px; }
 }
+/* iOS-inspired glass surfaces and edge-to-edge map mode */
+.btn, .set input[type=text], .set input[type=password], #q, .panel input[type=text], .panel textarea { transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.libHead h1 { letter-spacing: -.04em; }
+.libHead .btn.primary { background: #0A84FF; border-color: #0A84FF; color: white; }
+#saveStatus { color: var(--ink2); font-size: 12px; white-space: nowrap; }
+.folderbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.folderbar select { min-height:42px; border:1px solid var(--line); border-radius:999px; padding:0 14px; color:var(--ink); background:var(--panel); font: 14px var(--f-body); }
+.card .folderMove { min-height:34px; width:100%; border:1px solid var(--line); border-radius:10px; padding:0 10px; background:var(--bg); color:var(--ink); font:13px var(--f-body); }
+#bFullscreen { background:#0A84FF; color:#fff; border-color:#0A84FF; }
+#fullExit { position:fixed; z-index:120; top:calc(12px + env(safe-area-inset-top, 0px)); right:calc(12px + env(safe-area-inset-right, 0px)); border-radius:999px; box-shadow:0 6px 22px rgba(0,0,0,.18); }
+.app.map-fullscreen { display:block; padding:0; height:100dvh; }
+.app.map-fullscreen .edHead, .app.map-fullscreen > .bar, .app.map-fullscreen .panel { display:none !important; }
+.app.map-fullscreen .main { display:block; height:100%; }
+.app.map-fullscreen #view { position:fixed; inset:0; z-index:100; width:100vw; height:100dvh; border:0; border-radius:0; }
+.app.map-fullscreen .hint { display:none; }
+@supports (backdrop-filter: blur(1px)) { .card, .set, .panel { backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -162,7 +182,8 @@ body {
       <button class="btn" id="lImport">Import decks or maps</button>
       <button class="btn" id="lSet">AI settings</button>
     </div>
-    <p class="lead">Import PowerPoint files (.pptx) and each deck becomes a map you can edit. With an API key in AI settings, Claude organizes the deck the way the Chapter 15 map was built. Select several files at once. Saved map files (.json) load back in the same way.</p>
+    <p class="lead">Turn PowerPoint decks into editable mind maps. Your edits save automatically on this device.</p>
+    <div class="folderbar"><label for="folderFilter">Folder</label><select id="folderFilter" aria-label="Filter maps by folder"><option value="__all">All folders</option></select><button class="btn" id="lFolder">＋ New folder</button><span id="saveStatus" role="status">Saved on this device</span></div>
     <div class="tip" id="installTip" hidden>To install: tap the Share button in Safari, then Add to Home Screen. The app then opens full screen and works offline. Maps are stored on this device, so use Export on a card to keep a backup.</div>
     <div class="set" id="aiSet" hidden>
       <div class="chk"><input type="checkbox" id="sUse"><label for="sUse">Use AI when importing PowerPoint files</label></div>
@@ -194,6 +215,7 @@ body {
       <button class="btn" id="bZout" aria-label="Zoom out">−</button>
       <button class="btn" id="bZin" aria-label="Zoom in">+</button>
       <button class="btn" id="bFit">Fit</button>
+      <button class="btn" id="bFullscreen" aria-pressed="false">⛶ Full screen</button>
       <button class="btn" id="bCollapse">Collapse all</button>
       <button class="btn" id="bExpand">Expand all</button>
       <span class="sep"></span>
@@ -206,6 +228,7 @@ body {
       <div id="view" tabindex="0" aria-label="Mind map canvas">
         <div id="stage"><svg id="links" aria-hidden="true"></svg><div id="layer"></div></div>
         <div class="hint">Tap to select · double-tap to rename · pinch to zoom · drag to pan · Tab / Enter with a keyboard</div>
+        <button class="btn" id="fullExit" hidden>✕ Exit full screen</button>
       </div>
       <aside class="panel" id="panel" aria-label="Node details">
         <h2 id="pKind">Node</h2>
@@ -335,12 +358,13 @@ body {
     return null;
   }
   function saveLib() {
-    try { localStorage.setItem(LKEY, JSON.stringify(lib)); return true; }
+    try { localStorage.setItem(LKEY, JSON.stringify(lib)); var st = $('saveStatus'); if(st) st.textContent = 'Saved · ' + new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); return true; }
     catch (e) { toast('Couldn’t save. Storage may be full, so export your maps.'); return false; }
   }
   lib = loadLib();
+  if (lib) { lib.folders = Array.isArray(lib.folders) ? lib.folders : []; lib.maps.forEach(function(m) { if (!m.folder) m.folder = 'Unfiled'; }); }
   if (!lib) {
-    lib = { maps: [{ id: uid(), name: 'Ch. 15 · Genetic Code and Translation', updated: Date.now(), root: defaultTree() }] };
+    lib = { folders: [], maps: [{ id: uid(), name: 'Ch. 15 · Genetic Code and Translation', folder: 'Unfiled', updated: Date.now(), root: defaultTree() }] };
     saveLib();
   }
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
@@ -373,10 +397,18 @@ body {
   function showEd() { $('libScreen').hidden = true; $('edScreen').hidden = false; }
   var colV = function (i) { return 'var(--b' + (i % 6) + ')'; };
 
+  function renderFolderFilter() {
+    var sel = $('folderFilter'), old = sel.value || '__all';
+    sel.innerHTML = '';
+    [['__all','All folders'], ['Unfiled','Unfiled']].concat((lib.folders || []).filter(function(f){return f !== 'Unfiled';}).map(function(f){return [f,f];})).forEach(function(pair){ var o=document.createElement('option'); o.value=pair[0]; o.textContent=pair[1]; sel.appendChild(o); });
+    sel.value = Array.from(sel.options).some(function(o){return o.value===old;}) ? old : '__all';
+  }
   function renderLib() {
+    renderFolderFilter();
     var g = $('grid'); g.innerHTML = '';
-    if (!lib.maps.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No maps yet. Create one or import a deck.'; g.appendChild(e); }
-    lib.maps.slice().sort(function (a, b) { return b.updated - a.updated; }).forEach(function (m) {
+    var visible = lib.maps.filter(function(m){ return $('folderFilter').value === '__all' || (m.folder || 'Unfiled') === $('folderFilter').value; });
+    if (!visible.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = lib.maps.length ? 'No maps in this folder yet.' : 'No maps yet. Create one or import a deck.'; g.appendChild(e); }
+    visible.slice().sort(function (a, b) { return b.updated - a.updated; }).forEach(function (m) {
       var card = document.createElement('div'); card.className = 'card';
       var open = document.createElement('button'); open.className = 'open'; open.type = 'button';
       var nm = document.createElement('span'); nm.className = 'name'; nm.textContent = m.name;
@@ -386,19 +418,24 @@ body {
       mt.textContent = countAll(m.root) + ' nodes · ' + new Date(m.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       open.appendChild(nm); open.appendChild(dots); open.appendChild(mt);
       open.addEventListener('click', function () { openMap(m.id); });
+      var move = document.createElement('select'); move.className = 'folderMove'; move.setAttribute('aria-label','Move ' + m.name + ' to folder');
+      ['Unfiled'].concat(lib.folders || []).filter(function(f,i,a){return a.indexOf(f)===i;}).forEach(function(f){var o=document.createElement('option');o.value=f;o.textContent='Folder: '+f;move.appendChild(o);});
+      move.value = m.folder || 'Unfiled'; move.addEventListener('change',function(){m.folder=move.value;m.updated=Date.now();saveLib();renderLib();toast('Moved to '+m.folder+'.');});
       var acts = document.createElement('div'); acts.className = 'acts';
       function mk(label, fn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm'; b.textContent = label; b.addEventListener('click', fn); acts.appendChild(b); return b; }
       mk('Duplicate', function () { var c = JSON.parse(JSON.stringify(m)); c.id = uid(); c.name = m.name + ' copy'; c.updated = Date.now(); lib.maps.push(c); saveLib(); renderLib(); });
-      mk('Export', function () { shareFile(slug(m.name) + '.json', JSON.stringify({ app: 'mindmap', v: 1, name: m.name, root: m.root }), 'application/json'); });
+      mk('Export', function () { shareFile(slug(m.name) + '.json', JSON.stringify({ app: 'mindmap', v: 1, name: m.name, folder: m.folder || 'Unfiled', root: m.root }), 'application/json'); });
       var del = mk('Delete', function () {
         if (!del._armed) { del._armed = true; del.textContent = 'Tap to confirm'; del.classList.add('warn'); setTimeout(function () { del._armed = false; del.textContent = 'Delete'; del.classList.remove('warn'); }, 3000); return; }
         lib.maps = lib.maps.filter(function (x) { return x.id !== m.id; }); saveLib(); renderLib(); toast('Deleted “' + m.name + '”.');
       });
-      card.appendChild(open); card.appendChild(acts); g.appendChild(card);
+      card.appendChild(open); card.appendChild(move); card.appendChild(acts); g.appendChild(card);
     });
   }
+  $('folderFilter').addEventListener('change', renderLib);
+  $('lFolder').addEventListener('click', function(){ var name=prompt('Name your new folder'); if(name===null)return; name=name.trim(); if(!name)return; if(name.toLowerCase()==='unfiled') { toast('“Unfiled” is a reserved folder name.'); return; } if(!lib.folders)lib.folders=[]; if(lib.folders.indexOf(name)<0)lib.folders.push(name); saveLib(); renderLib(); $('folderFilter').value=name; renderLib(); toast('Folder created. Move maps into it using each map’s folder menu.'); });
   $('lNew').addEventListener('click', function () {
-    var m = { id: uid(), name: 'Untitled map', updated: Date.now(), root: T('Central topic') };
+    var m = { id: uid(), name: 'Untitled map', folder: $('folderFilter').value !== '__all' ? $('folderFilter').value : 'Unfiled', updated: Date.now(), root: T('Central topic') };
     lib.maps.push(m); saveLib(); openMap(m.id);
   });
   $('lImport').addEventListener('click', function () { $('file').click(); });
@@ -412,7 +449,7 @@ body {
         if (busy.cancelled) return;
         var label = (files.length > 1 ? '(' + (idx + 1) + ' of ' + files.length + ') ' : '') + f.name;
         showBusy(/\.pptx$/i.test(f.name) && useAi ? 'Building map with AI' : 'Importing', label);
-        return importFile(f, useAi, label).then(function (m) { lib.maps.push(m.map); ok++; if (m.note) notes.push(f.name + ': ' + m.note); },
+        return importFile(f, useAi, label).then(function (m) { if (!m.map.folder) m.map.folder = $('folderFilter').value !== '__all' ? $('folderFilter').value : 'Unfiled'; lib.maps.push(m.map); ok++; if (m.note) notes.push(f.name + ': ' + m.note); },
           function (err) { if (!busy.cancelled) { bad.push(f.name); console.error(err); } });
       });
     }, Promise.resolve()).then(function () {
@@ -426,7 +463,7 @@ body {
       return f.text().then(function (s) {
         var j = JSON.parse(s), r = j && j.root ? j.root : j;
         if (!r || !Array.isArray(r.ch) || typeof r.t !== 'string') throw new Error('Not a mind map file');
-        return { map: { id: uid(), name: (j && j.name) || base, updated: Date.now(), root: r } };
+        return { map: { id: uid(), name: (j && j.name) || base, folder: (j && j.folder) || ($('folderFilter').value !== '__all' ? $('folderFilter').value : 'Unfiled'), updated: Date.now(), root: r } };
       });
     }
     if (/\.pptx$/i.test(f.name)) {
@@ -925,13 +962,24 @@ body {
   $('bExpand').addEventListener('click', function () { setAll(false); });
   $('bPanel').addEventListener('click', function () { app.classList.toggle('panel-open'); setTimeout(fit, 0); });
   $('q').addEventListener('input', function (e) { query = e.target.value; render(); });
-  $('bExportMap').addEventListener('click', function () { persist(); shareFile(slug(cur.name) + '.json', JSON.stringify({ app: 'mindmap', v: 1, name: cur.name, root: root }), 'application/json'); });
+  $('bExportMap').addEventListener('click', function () { persist(); shareFile(slug(cur.name) + '.json', JSON.stringify({ app: 'mindmap', v: 1, name: cur.name, folder: cur.folder || 'Unfiled', root: root }), 'application/json'); });
   function outline() {
     var out = ['# ' + root.t, '']; if (root.n) out.push(root.n, '');
     (function w(n, d) { n.ch.forEach(function (c) { out.push('  '.repeat(d) + '- ' + (c.k === 'q' ? '[Check] ' : '') + c.t + (c.n ? ' — ' + c.n.replace(/\n/g, ' ') : '')); w(c, d + 1); }); })(root, 0);
     return out.join('\n');
   }
   $('bExport').addEventListener('click', function () { shareFile(slug(cur.name) + '.md', outline(), 'text/markdown'); });
+  function setFullscreen(on) {
+    app.classList.toggle('map-fullscreen', !!on);
+    $('fullExit').hidden = !on;
+    $('bFullscreen').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('bFullscreen').textContent = on ? '⛶ Full screen on' : '⛶ Full screen';
+    if (on) { app.classList.remove('panel-open'); setTimeout(applyView, 30); }
+    else setTimeout(function(){applyView();}, 30);
+  }
+  $('bFullscreen').addEventListener('click', function(){ setFullscreen(!app.classList.contains('map-fullscreen')); });
+  $('fullExit').addEventListener('click', function(){ setFullscreen(false); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && app.classList.contains('map-fullscreen')) setFullscreen(false); });
 
   document.addEventListener('keydown', function (e) {
     if ($('edScreen').hidden) return;
