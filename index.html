@@ -32,6 +32,12 @@ html[data-theme="dark"] {
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
+#importOptions { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 20px; background: color-mix(in srgb, var(--bg) 78%, transparent); }
+#importOptions .import-dialog { width: min(560px, 100%); max-height: min(85vh, 720px); overflow: auto; padding: 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); box-shadow: 0 18px 60px #0002; display: flex; flex-direction: column; gap: 14px; }
+#importOptions h2 { margin: 0; font: 700 21px/1.2 var(--f-display); }
+#importOptions p { margin: 0; color: var(--ink2); font-size: 14px; }
+#importOptions textarea { width: 100%; min-height: 140px; resize: vertical; font: 400 15px/1.45 var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+#importOptions .import-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 html, body { height: 100%; margin: 0; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.4; overflow: hidden;
@@ -271,6 +277,15 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     </div>
     <div class="grid" id="grid"></div>
     <input type="file" id="file" accept=".pptx,.json,application/json,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple hidden>
+    <div id="importOptions" hidden>
+      <section class="import-dialog" role="dialog" aria-modal="true" aria-labelledby="importOptionsTitle">
+        <h2 id="importOptionsTitle">Import options</h2>
+        <p>Tell the AI how you want your mind map organized. For example: “Group by major concept, keep definitions as notes, and make each branch useful for exam review.”</p>
+        <div class="field"><label for="importSpecialRequest">Special requests (optional)</label><textarea id="importSpecialRequest" maxlength="4000" placeholder="How should the mind map be structured? What should be emphasized, grouped, shortened, or kept as notes?"></textarea></div>
+        <p>These instructions guide AI-generated maps from PowerPoint files. JSON mind maps are imported as-is. If AI import is off or no API key is set, the request cannot change the basic offline draft.</p>
+        <div class="import-actions"><button class="btn" id="cancelImportOptions" type="button">Cancel</button><button class="btn primary" id="continueImport" type="button">Choose files</button></div>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -344,15 +359,8 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')}
   /* Supabase auth + private cloud library. Connection settings are per-browser. */
   var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=false, cloudChannel=null, lastCloudStamp=0;
-var SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
-var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Zyw8kNPadT5DJVgfIR9iAg_2o00OZrU';
-
-function readSbConfig() {
-  return {
-    url: SUPABASE_URL,
-    key: SUPABASE_PUBLISHABLE_KEY
-  };
-}
+  var SBKEY='mindmaps-supabase-config-v1';
+  function readSbConfig(){try{return JSON.parse(localStorage.getItem(SBKEY)||'{}')}catch(e){return {}}}
   function setAuthMessage(msg){var el=$('authMessage');if(el)el.textContent=msg;}
   function authStatus(msg){var el=$('authStatus');if(el)el.textContent=msg;}
   function initSupabase(){
@@ -576,10 +584,36 @@ function readSbConfig() {
     var m = { id: uid(), name: 'Untitled map', folder: $('folderFilter').value !== '__all' ? $('folderFilter').value : 'Unfiled', updated: Date.now(), root: T('Central topic') };
     lib.maps.push(m); saveLib(); openMap(m.id);
   });
-  $('lImport').addEventListener('click', function () { $('file').click(); });
+  var pendingSpecialRequest = '';
+  var pendingImportFiles = [];
+  $('lImport').addEventListener('click', function () {
+    // Select files first; show the special-request dialog after selection.
+    $('file').click();
+  });
+  function closeImportOptions(cancelImport) {
+    $('importOptions').hidden = true;
+    if (cancelImport) pendingImportFiles = [];
+    pendingSpecialRequest = '';
+  }
+  $('cancelImportOptions').addEventListener('click', function () { closeImportOptions(true); });
+  $('continueImport').addEventListener('click', function () {
+    var specialRequest = $('importSpecialRequest').value.trim().slice(0, 4000);
+    var files = pendingImportFiles.slice();
+    closeImportOptions(false);
+    pendingImportFiles = [];
+    if (files.length) processImportFiles(files, specialRequest);
+  });
+  $('importOptions').addEventListener('click', function (e) { if (e.target === $('importOptions')) closeImportOptions(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('importOptions').hidden) closeImportOptions(true); });
   $('file').addEventListener('change', function (e) {
     var files = Array.from(e.target.files || []); e.target.value = '';
     if (!files.length) return;
+    pendingImportFiles = files;
+    $('importSpecialRequest').value = '';
+    $('importOptions').hidden = false;
+    $('importSpecialRequest').focus();
+  });
+  function processImportFiles(files, specialRequest) {
     var ok = 0, notes = [], bad = [], useAi = settings.useAi && !!settings.key;
     busy.cancelled = false;
     files.reduce(function (p, f, idx) {
@@ -587,15 +621,15 @@ function readSbConfig() {
         if (busy.cancelled) return;
         var label = (files.length > 1 ? '(' + (idx + 1) + ' of ' + files.length + ') ' : '') + f.name;
         showBusy(/\.pptx$/i.test(f.name) && useAi ? 'Building map with AI' : 'Importing', label);
-        return importFile(f, useAi, label).then(function (m) { if (!m.map.folder) m.map.folder = $('folderFilter').value !== '__all' ? $('folderFilter').value : 'Unfiled'; lib.maps.push(m.map); ok++; if (m.note) notes.push(f.name + ': ' + m.note); },
+        return importFile(f, useAi, label, specialRequest).then(function (m) { if (!m.map.folder) m.map.folder = $('folderFilter').value !== '__all' ? $('folderFilter').value : 'Unfiled'; lib.maps.push(m.map); ok++; if (m.note) notes.push(f.name + ': ' + m.note); },
           function (err) { if (!busy.cancelled) { bad.push(f.name); console.error(err); } });
       });
     }, Promise.resolve()).then(function () {
       $('busy').hidden = true; saveLib(); renderLib();
       toast(busy.cancelled ? 'Import cancelled. ' + ok + ' imported.' : ok + ' imported' + (bad.length ? '. Couldn’t read: ' + bad.join(', ') : '.') + (notes.length ? ' ' + notes.join(' ') : ''));
     });
-  });
-  function importFile(f, useAi, label) {
+  }
+  function importFile(f, useAi, label, specialRequest) {
     var base = f.name.replace(/\.[^.]+$/, '');
     if (/\.json$/i.test(f.name)) {
       return f.text().then(function (s) {
@@ -611,7 +645,7 @@ function readSbConfig() {
         var dump = slidesDump(slides);
         if (dump.length > 400000) return draft('deck too large');
         busy.ctl = new AbortController();
-        return aiRequest(dump, busy.ctl.signal, function (n) { $('busyP').textContent = label + ' · ' + Math.round(n / 100) / 10 + 'k characters written'; })
+        return aiRequest(dump, busy.ctl.signal, function (n) { $('busyP').textContent = label + ' · ' + Math.round(n / 100) / 10 + 'k characters written'; }, specialRequest)
           .then(function (text) { return { map: aiToMap(text, base.replace(/_/g, ' ')) }; })
           .catch(function (err) {
             if (busy.cancelled) throw err;
@@ -759,11 +793,11 @@ function readSbConfig() {
         s.body.map(function (p) { return '  '.repeat(p.lvl) + '- ' + p.t; }).join('\n') + (s.notes.length ? '\nNOTES: ' + s.notes.join(' ') : '');
     }).join('\n\n');
   }
-  function aiRequest(dump, signal, onProgress) {
+  function aiRequest(dump, signal, onProgress, specialRequest) {
     return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', signal: signal,
       headers: { 'content-type': 'application/json', 'x-api-key': settings.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: settings.model, max_tokens: 16000, stream: true, system: SYS, messages: [{ role: 'user', content: 'Slides from the deck:\n\n' + dump }] })
+      body: JSON.stringify({ model: settings.model, max_tokens: 16000, stream: true, system: SYS, messages: [{ role: 'user', content: 'Slides from the deck:\n\n' + dump + (specialRequest ? '\n\nSpecial requests from the user for the map’s organization and presentation (follow these where possible while preserving the slide facts):\n' + specialRequest : '') }] })
     }).then(function (res) {
       if (!res.ok) {
         return res.json().catch(function () { return {}; }).then(function (j) {
