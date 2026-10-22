@@ -344,8 +344,15 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')}
   /* Supabase auth + private cloud library. Connection settings are per-browser. */
   var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=false, cloudChannel=null, lastCloudStamp=0;
-  var SBKEY='mindmaps-supabase-config-v1';
-  function readSbConfig(){try{return JSON.parse(localStorage.getItem(SBKEY)||'{}')}catch(e){return {}}}
+var SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
+var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Zyw8kNPadT5DJVgfIR9iAg_2o00OZrU';
+
+function readSbConfig() {
+  return {
+    url: SUPABASE_URL,
+    key: SUPABASE_PUBLISHABLE_KEY
+  };
+}
   function setAuthMessage(msg){var el=$('authMessage');if(el)el.textContent=msg;}
   function authStatus(msg){var el=$('authStatus');if(el)el.textContent=msg;}
   function initSupabase(){
