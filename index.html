@@ -117,7 +117,6 @@ body {
 #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 #links path { fill: none; stroke-linecap: round; opacity: .8; }
 .node {
-  transition: transform 180ms cubic-bezier(.2,.75,.25,1), box-shadow 160ms ease, opacity 160ms ease;
   --c: var(--ink); position: absolute; left: 0; top: 0; width: max-content; max-width: 230px;
   padding: 8px 12px; border-radius: 9px; border: 1.5px solid var(--c); cursor: pointer;
   background: color-mix(in srgb, var(--c) 13%, var(--panel)); color: var(--ink); font-size: 13px; line-height: 1.3;
@@ -127,12 +126,14 @@ body {
 .node.d0 { max-width: 270px; background: var(--ink); color: var(--bg); border-color: var(--ink); border-radius: 14px; padding: 12px 18px; font: 700 19px/1.15 var(--f-display); text-align: center; }
 .node.d1 { background: var(--c); color: var(--on); font: 700 14.5px/1.2 var(--f-display); padding: 9px 14px; border-radius: 11px; }
 .node.d2 { font-weight: 500; }
+.node.detached { max-width:270px; background:var(--ink); color:var(--bg); border:2px solid var(--ink); border-radius:14px; padding:12px 18px; font:700 19px/1.15 var(--f-display); text-align:center; }
+.node .node-photo { display:block; max-width:190px; max-height:130px; object-fit:contain; margin:0 auto 7px; border-radius:8px; }
+#links path.manual-link { pointer-events:stroke; cursor:pointer; stroke:#718096; stroke-width:3; stroke-dasharray:7 5; opacity:.95; }
+#links path.manual-link:hover { stroke:#e05b55; stroke-width:5; }
+#bConnect.active { background:var(--ink); color:var(--bg); }
 .node.q { border-style: dashed; background: var(--panel); }
 .node.q .txt::before { content: "Check"; display: block; font: 500 9px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c); margin-bottom: 2px; }
 .node.sel { outline: 3px solid var(--sel); outline-offset: 2px; }
-.node.drop-over { outline: 3px solid var(--b2); outline-offset: 4px; box-shadow: 0 0 0 7px color-mix(in srgb, var(--b2) 18%, transparent); transform: scale(1.035); }
-.node.is-dragging { opacity: .82; z-index: 10; box-shadow: 0 16px 40px #0003; transition: none; }
-@media (prefers-reduced-motion: reduce) { .node { transition: none; } }
 #view.drag-boxes .node { cursor: grab; touch-action: none; }
 #view.drag-boxes .node:active { cursor: grabbing; }
 .node.dim { opacity: .28; }
@@ -308,8 +309,9 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
       <button class="btn" id="bRedo">Redo</button>
       <span class="sep"></span>
       <button class="btn" id="bChild">Add child</button>
+      <button class="btn" id="bTopic">Add disconnected topic</button>
+      <button class="btn" id="bConnect">Connect nodes</button>
       <button class="btn" id="bSib">Add sibling</button>
-      <button class="btn" id="bCentral" title="Add another top-level topic to this map">Add central topic</button>
       <button class="btn" id="bEdit">Rename</button>
       <button class="btn" id="bDel">Delete</button>
       <button class="btn" id="bDrag" aria-pressed="false" title="Toggle dragging individual boxes">Drag boxes: Off</button>
@@ -331,7 +333,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     <div class="main">
       <div id="view" tabindex="0" aria-label="Mind map canvas">
         <div id="stage"><svg id="links" aria-hidden="true"></svg><div id="layer"></div></div>
-        <div class="hint">Select a box · enable Drag boxes to reposition · reconnect nearest to change its parent · drag empty space to pan</div>
+        <div class="hint">Select a box · add disconnected topics · connect two nodes · drag empty space to pan</div>
         <button class="btn" id="fullExit" hidden>✕ Exit full screen</button>
       </div>
       <aside class="panel" id="panel" aria-label="Node details">
@@ -340,6 +342,8 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
         <div class="field grow"><label class="l" for="pNote">Notes</label><textarea id="pNote" placeholder="Add detail, an example or the answer to a question."></textarea></div>
         <label class="chk"><input type="checkbox" id="pQ"> Self-check question</label>
         <div class="field"><label class="l">Branch color</label><div class="sws" id="sws"></div></div>
+        <div class="field"><label class="l" for="pColor">Custom node color</label><input id="pColor" type="color" value="#7c8da6" style="width:100%;height:38px"></div>
+        <div class="field"><label class="l" for="pImage">Node picture</label><input id="pImage" type="file" accept="image/*"><button class="btn" id="pRemoveImage" type="button">Remove picture</button></div>
         <div class="row"><button class="btn" id="pUp">Move up</button><button class="btn" id="pDown">Move down</button></div>
       </aside>
     </div>
@@ -867,7 +871,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   function persist() { if (cur) { cur.updated = Date.now(); cur.root = root; saveLib(); } }
   function openMap(id) {
     cur = lib.maps.filter(function (m) { return m.id === id; })[0]; if (!cur) return;
-    root = cur.root; normalize(root); history = []; future = []; sel = root.id; query = ''; $('q').value = '';
+    root = cur.root; root.links = Array.isArray(root.links) ? root.links : []; normalize(root); history = []; future = []; sel = root.id; query = ''; $('q').value = '';
     $('mapName').value = cur.name; showEd();
     if (window.innerWidth >= 900) app.classList.add('panel-open'); else app.classList.remove('panel-open');
     render(); requestAnimationFrame(fit);
@@ -898,9 +902,11 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     var q = query.trim().toLowerCase();
     function build(n, depth, col, parent) {
       var el = document.createElement('div');
-      el.className = 'node d' + Math.min(depth, 2) + (n.k === 'q' ? ' q' : '') + (n.n ? ' hasnote' : '');
+      el.className = 'node d' + Math.min(depth, 2) + (n.detached ? ' detached' : '') + (n.k === 'q' ? ' q' : '') + (n.n ? ' hasnote' : '');
+      if (n.color) el.style.setProperty('--c', n.color);
       el.dataset.id = n.id;
       if (depth > 0) el.style.setProperty('--c', colV(col));
+      if (n.img) { var im = document.createElement('img'); im.className = 'node-photo'; im.src = n.img; im.alt = 'Picture for ' + n.t; el.appendChild(im); }
       var tx = document.createElement('span'); tx.className = 'txt'; tx.textContent = n.t; el.appendChild(tx);
       if (depth > 0 && n.ch.length) {
         var b = document.createElement('button'); b.className = 'tog'; b.type = 'button';
@@ -953,13 +959,15 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     info.forEach(function (inf) {
       inf.el.style.transform = 'translate(' + inf.x + 'px,' + inf.y + 'px)';
       inf.el.classList.toggle('L', inf.dir < 0);
-      var p = inf.parent; if (!p) return;
+      var p = inf.parent; if (!p || inf.n.detached) return;
       var dir = inf.dir, sx = dir > 0 ? p.x + p.w : p.x, sy = p.y + p.h / 2;
       var ex = dir > 0 ? inf.x : inf.x + inf.w, ey = inf.y + inf.h / 2, mx = (sx + ex) / 2;
       var sw = inf.depth === 1 ? 3.5 : inf.depth === 2 ? 2.4 : 1.8;
       svg += '<path d="M' + sx + ' ' + sy + 'C' + mx + ' ' + sy + ' ' + mx + ' ' + ey + ' ' + ex + ' ' + ey + '" style="stroke:' + colV(inf.col) + ';stroke-width:' + sw + '"/>';
     });
+    (root.links || []).forEach(function (ln, idx) { var a=info.get(ln.a), b=info.get(ln.b); if(!a||!b)return; var ax=a.x+a.w/2, ay=a.y+a.h/2, bx=b.x+b.w/2, by=b.y+b.h/2; svg += '<path class="manual-link" data-link="'+idx+'" d="M'+ax+' '+ay+' L'+bx+' '+by+'" />'; });
     links.innerHTML = svg;
+    links.querySelectorAll('path.manual-link').forEach(function(path){ path.addEventListener('click', function(e){ e.stopPropagation(); var idx=Number(path.dataset.link); mutate(function(){ root.links.splice(idx,1); }); toast('Connection deleted.'); }); });
     $('count').textContent = countAll(root) + ' nodes';
     syncChrome(); applyView();
   }
@@ -998,13 +1006,13 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   }, { passive: false });
   ['gesturestart', 'gesturechange'].forEach(function (n) { viewEl.addEventListener(n, function (e) { e.preventDefault(); }); });
 
-  var ptrs = new Map(), moved = false, panning = false, start = null, pinch0 = null, nodeDrag = null, suppressNodeClickUntil = 0, dropCandidateId = null;
+  var ptrs = new Map(), moved = false, panning = false, start = null, pinch0 = null, nodeDrag = null, suppressNodeClickUntil = 0;
   viewEl.addEventListener('pointerdown', function (e) {
     if (e.target.closest('[contenteditable="true"]')) return;
     var hitNode = e.target.closest('.node');
     if (dragBoxes && hitNode && !e.target.closest('.tog') && e.button === 0) {
       var di = info.get(hitNode.dataset.id);
-      if (di) { select(hitNode.dataset.id); nodeDrag = { id: hitNode.dataset.id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: di.x, y: di.y, moved: false, el: di.el }; di.el.classList.add('is-dragging'); try { viewEl.setPointerCapture(e.pointerId); } catch (err) {} e.preventDefault(); return; }
+      if (di) { select(hitNode.dataset.id); nodeDrag = { id: hitNode.dataset.id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: di.x, y: di.y, moved: false }; try { viewEl.setPointerCapture(e.pointerId); } catch (err) {} e.preventDefault(); return; }
     }
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (ptrs.size === 1) { moved = false; start = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty }; }
@@ -1014,14 +1022,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     if (nodeDrag && nodeDrag.pointerId === e.pointerId) {
       var dxn = (e.clientX - nodeDrag.startX) / view.s, dyn = (e.clientY - nodeDrag.startY) / view.s;
       if (Math.hypot(dxn, dyn) > 3) nodeDrag.moved = true;
-      if (nodeDrag.moved) {
-        var ni = info.get(nodeDrag.id);
-        if (ni) { ni.x = nodeDrag.x + dxn; ni.y = nodeDrag.y + dyn; ni.el.style.transform = 'translate(' + ni.x + 'px,' + ni.y + 'px)'; }
-        var under = document.elementFromPoint(e.clientX, e.clientY), targetEl = under && under.closest ? under.closest('.node') : null;
-        var nextId = targetEl && targetEl.dataset.id !== nodeDrag.id ? targetEl.dataset.id : null;
-        if (nextId) { var src = findNode(nodeDrag.id), trg = findNode(nextId); function hasDesc(n,id){return n.id===id||n.ch.some(function(c){return hasDesc(c,id);});} if (!src || !trg || hasDesc(src.n,nextId)) nextId = null; }
-        if (dropCandidateId !== nextId) { if (dropCandidateId && info.get(dropCandidateId)) info.get(dropCandidateId).el.classList.remove('drop-over'); dropCandidateId = nextId; if (dropCandidateId && info.get(dropCandidateId)) info.get(dropCandidateId).el.classList.add('drop-over'); }
-      }
+      if (nodeDrag.moved) { var ni = info.get(nodeDrag.id); if (ni) { ni.x = nodeDrag.x + dxn; ni.y = nodeDrag.y + dyn; ni.el.style.transform = 'translate(' + ni.x + 'px,' + ni.y + 'px)'; } }
       return;
     }
     if (!ptrs.has(e.pointerId)) return;
@@ -1042,20 +1043,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   function endPtr(e) {
     if (nodeDrag && nodeDrag.pointerId === e.pointerId) {
       var finished = nodeDrag; nodeDrag = null;
-      if (dropCandidateId && info.get(dropCandidateId)) info.get(dropCandidateId).el.classList.remove('drop-over');
-      var targetId = dropCandidateId; dropCandidateId = null;
-      if (finished.el) finished.el.classList.remove('is-dragging');
-      if (finished.moved) {
-        var found = findNode(finished.id), inf = info.get(finished.id), target = targetId && findNode(targetId);
-        if (found && inf) {
-          var snap = ser();
-          if (target && found.parent && target.n.id !== found.n.id) {
-            found.parent.ch.splice(found.parent.ch.indexOf(found.n), 1); target.n.c = false; target.n.ch.push(found.n); delete found.n.pos;
-            sel = found.n.id; pushHist(snap); persist(); render(); toast('Moved under “' + target.n.t + '”.');
-          } else { found.n.pos = { x: inf.x, y: inf.y }; pushHist(snap); persist(); render(); toast('Position updated.'); }
-          suppressNodeClickUntil = Date.now() + 450;
-        }
-      }
+      if (finished.moved) { var found = findNode(finished.id), inf = info.get(finished.id); if (found && inf) { var snap = ser(); found.n.pos = { x: inf.x, y: inf.y }; pushHist(snap); persist(); render(); suppressNodeClickUntil = Date.now() + 450; } }
       return;
     }
     ptrs.delete(e.pointerId);
@@ -1080,7 +1068,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
       if (e.target.closest('.tog')) { toggleCollapse(id); return; }
       var now = Date.now();
       if (lastTap.id === id && now - lastTap.t < 380) { lastTap = { id: null, t: 0 }; select(id); startEdit(id); return; }
-      lastTap = { id: id, t: now }; select(id); return;
+      lastTap = { id: id, t: now }; select(id); if(connectMode) connectSelectedNodes(); return;
     }
     if (!moved) { sel = null; info.forEach(function (i) { i.el.classList.remove('sel'); }); syncChrome(); }
   });
@@ -1102,6 +1090,18 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
       if (e.key === 'Enter') { e.preventDefault(); t.blur(); }
       else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
     });
+  }
+  var connectMode = false, connectFirst = null;
+  function addDisconnectedTopic() {
+    var node = T('New central topic'); node.detached = true; node.ch = [];
+    mutate(function(){ root.ch.push(node); }); select(node.id, true); startEdit(node.id);
+  }
+  function connectSelectedNodes() {
+    if (!sel) { toast('Select a node first.'); return; }
+    if (!connectMode) { connectMode=true; connectFirst=sel; $('bConnect').classList.add('active'); $('bConnect').textContent='Choose second node…'; toast('Now select the node to connect to.'); return; }
+    if (sel === connectFirst) { toast('Choose a different node.'); return; }
+    var a=connectFirst, b=sel; mutate(function(){ root.links=root.links||[]; if(!root.links.some(function(x){return (x.a===a&&x.b===b)||(x.a===b&&x.b===a)})) root.links.push({a:a,b:b}); });
+    connectMode=false; connectFirst=null; $('bConnect').classList.remove('active'); $('bConnect').textContent='Connect nodes'; toast('Connection added. Click a dashed line to delete it.');
   }
   function addChild() {
     var tgt = findNode(sel || root.id).n, nid;
@@ -1134,7 +1134,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   }
 
   /* ---------- panel + toolbar ---------- */
-  var pTitle = $('pTitle'), pNote = $('pNote'), pQ = $('pQ'), sws = $('sws'), swBtns = [];
+  var pTitle = $('pTitle'), pNote = $('pNote'), pQ = $('pQ'), sws = $('sws'), swBtns = [], pColor=$('pColor');
   for (var i = 0; i < 6; i++) {
     (function (i) {
       var b = document.createElement('button'); b.type = 'button'; b.className = 'sw'; b.style.background = colV(i); b.setAttribute('aria-label', 'Branch color ' + (i + 1));
@@ -1155,7 +1155,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     $('pKind').textContent = !has ? 'Nothing selected' : !f.parent ? 'Central topic' : f.parent === root ? 'Main branch' : n.k === 'q' ? 'Self-check question' : 'Idea';
     if (document.activeElement !== pTitle) pTitle.value = has ? n.t : '';
     if (document.activeElement !== pNote) pNote.value = has ? n.n : '';
-    pQ.checked = has && n.k === 'q'; pQ.disabled = !has || !f.parent || f.parent === root;
+    pQ.checked = has && n.k === 'q'; pColor.disabled=!has; pColor.value=has&&n.color&&/^#[0-9a-f]{6}$/i.test(n.color)?n.color:'#7c8da6'; $('pImage').disabled=!has; $('pRemoveImage').disabled=!has||!n.img; pQ.disabled = !has || !f.parent || f.parent === root;
     var br = has ? branchOf(n.id) : null;
     swBtns.forEach(function (b, i) { b.disabled = !br; b.setAttribute('aria-pressed', br && br.col === i ? 'true' : 'false'); });
   }
@@ -1174,16 +1174,15 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     var f = findNode(sel); if (!f) return; f.n.n = pNote.value; persist();
     var inf = info.get(sel); if (inf) inf.el.classList.toggle('hasnote', !!pNote.value);
   });
-  pQ.addEventListener('change', function () { var f = findNode(sel); if (!f) return; mutate(function () { f.n.k = pQ.checked ? 'q' : ''; }); });
+  var colorSnap=null; pColor.addEventListener('focus',function(){colorSnap=ser();});
+  pColor.addEventListener('input', function(){ var f=findNode(sel); if(!f)return; f.n.color=pColor.value; var inf=info.get(sel); if(inf)inf.el.style.setProperty('--c',pColor.value); persist(); });
+  pColor.addEventListener('change', function(){ if(root && colorSnap!==null && colorSnap!==ser()) pushHist(colorSnap); colorSnap=null; persist(); });
+  $('pImage').addEventListener('change', function(){ var f=findNode(sel), file=$('pImage').files&&$('pImage').files[0]; if(!f||!file)return; if(!file.type.startsWith('image/')){toast('Choose an image file.');return;} if(file.size>1800000){toast('Please choose an image smaller than 1.8 MB.');return;} var before=ser(), reader=new FileReader(); reader.onload=function(){ f.n.img=reader.result; pushHist(before); persist(); render(); }; reader.readAsDataURL(file); });
+  $('pRemoveImage').addEventListener('click',function(){var f=findNode(sel);if(!f||!f.n.img)return;mutate(function(){delete f.n.img;});});
+  pQ.addEventListener('change', function() { var f = findNode(sel); if (!f) return; mutate(function () { f.n.k = pQ.checked ? 'q' : ''; }); });
   $('pUp').addEventListener('click', function () { move(-1); }); $('pDown').addEventListener('click', function () { move(1); });
   $('bUndo').addEventListener('click', undo); $('bRedo').addEventListener('click', redo);
-  $('bChild').addEventListener('click', addChild); $('bSib').addEventListener('click', addSibling);
-  $('bCentral').addEventListener('click', function () {
-    var nid;
-    mutate(function () { var c = T('New central topic'); nid = c.id; c.col = root.ch.length % 6; root.ch.push(c); });
-    select(nid, true); startEdit(nid); toast('Added a new top-level topic. Rename it to get started.');
-  });
-
+  $('bChild').addEventListener('click', addChild); $('bSib').addEventListener('click', addSibling); $('bTopic').addEventListener('click',addDisconnectedTopic); $('bConnect').addEventListener('click',connectSelectedNodes);
   $('bDrag').addEventListener('click', function () { dragBoxes = !dragBoxes; $('bDrag').textContent = 'Drag boxes: ' + (dragBoxes ? 'On' : 'Off'); $('bDrag').setAttribute('aria-pressed', String(dragBoxes)); viewEl.classList.toggle('drag-boxes', dragBoxes); toast(dragBoxes ? 'Drag mode on: drag a box to reposition it.' : 'Drag mode off: drag empty space to pan.'); });
   $('bReconnect').addEventListener('click', function () {
     if (!sel || sel === root.id) { toast('Select a non-root box first.'); return; }
