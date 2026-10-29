@@ -117,6 +117,7 @@ body {
 #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 #links path { fill: none; stroke-linecap: round; opacity: .8; }
 .node {
+  transition: transform 180ms cubic-bezier(.2,.75,.25,1), box-shadow 160ms ease, opacity 160ms ease;
   --c: var(--ink); position: absolute; left: 0; top: 0; width: max-content; max-width: 230px;
   padding: 8px 12px; border-radius: 9px; border: 1.5px solid var(--c); cursor: pointer;
   background: color-mix(in srgb, var(--c) 13%, var(--panel)); color: var(--ink); font-size: 13px; line-height: 1.3;
@@ -129,6 +130,11 @@ body {
 .node.q { border-style: dashed; background: var(--panel); }
 .node.q .txt::before { content: "Check"; display: block; font: 500 9px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c); margin-bottom: 2px; }
 .node.sel { outline: 3px solid var(--sel); outline-offset: 2px; }
+.node.drop-over { outline: 3px solid var(--b2); outline-offset: 4px; box-shadow: 0 0 0 7px color-mix(in srgb, var(--b2) 18%, transparent); transform: scale(1.035); }
+.node.is-dragging { opacity: .82; z-index: 10; box-shadow: 0 16px 40px #0003; transition: none; }
+@media (prefers-reduced-motion: reduce) { .node { transition: none; } }
+#view.drag-boxes .node { cursor: grab; touch-action: none; }
+#view.drag-boxes .node:active { cursor: grabbing; }
 .node.dim { opacity: .28; }
 .node.hit { box-shadow: 0 0 0 3px color-mix(in srgb, var(--b5) 70%, transparent); }
 .node.hasnote::after { content: ""; position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--c); border: 2px solid var(--bg); }
@@ -303,8 +309,11 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
       <span class="sep"></span>
       <button class="btn" id="bChild">Add child</button>
       <button class="btn" id="bSib">Add sibling</button>
+      <button class="btn" id="bCentral" title="Add another top-level topic to this map">Add central topic</button>
       <button class="btn" id="bEdit">Rename</button>
       <button class="btn" id="bDel">Delete</button>
+      <button class="btn" id="bDrag" aria-pressed="false" title="Toggle dragging individual boxes">Drag boxes: Off</button>
+      <button class="btn" id="bReconnect" title="Reconnect the selected box to the closest other box">Reconnect nearest</button>
       <span class="sep"></span>
       <button class="btn" id="bZout" aria-label="Zoom out">−</button>
       <button class="btn" id="bZin" aria-label="Zoom in">+</button>
@@ -322,7 +331,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     <div class="main">
       <div id="view" tabindex="0" aria-label="Mind map canvas">
         <div id="stage"><svg id="links" aria-hidden="true"></svg><div id="layer"></div></div>
-        <div class="hint">Tap to select · double-tap to rename · pinch to zoom · drag to pan · Tab / Enter with a keyboard</div>
+        <div class="hint">Select a box · enable Drag boxes to reposition · reconnect nearest to change its parent · drag empty space to pan</div>
         <button class="btn" id="fullExit" hidden>✕ Exit full screen</button>
       </div>
       <aside class="panel" id="panel" aria-label="Node details">
@@ -851,7 +860,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
 
   /* ---------- editor state ---------- */
   var history = [], future = [], sel = null, query = '';
-  var info = new Map(), view = { tx: 0, ty: 0, s: 1 }, editing = false;
+  var info = new Map(), view = { tx: 0, ty: 0, s: 1 }, editing = false, dragBoxes = false;
   var viewEl = $('view'), stage = $('stage'), layer = $('layer'), links = $('links'), app = $('app');
 
   function ser() { return JSON.stringify(root); }
@@ -938,6 +947,8 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
       list.forEach(function (c) { var H = Hm.get(c.id); place(c, edge, y + H / 2, dir); y += H + VGAP; });
     }
     side(kids.slice(0, best), 1); side(kids.slice(best), -1);
+    // Saved manual positions override the automatic tree layout.
+    info.forEach(function (inf) { if (inf.n.pos && Number.isFinite(inf.n.pos.x) && Number.isFinite(inf.n.pos.y)) { inf.x = inf.n.pos.x; inf.y = inf.n.pos.y; } });
     var svg = '';
     info.forEach(function (inf) {
       inf.el.style.transform = 'translate(' + inf.x + 'px,' + inf.y + 'px)';
@@ -987,14 +998,32 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   }, { passive: false });
   ['gesturestart', 'gesturechange'].forEach(function (n) { viewEl.addEventListener(n, function (e) { e.preventDefault(); }); });
 
-  var ptrs = new Map(), moved = false, panning = false, start = null, pinch0 = null;
+  var ptrs = new Map(), moved = false, panning = false, start = null, pinch0 = null, nodeDrag = null, suppressNodeClickUntil = 0, dropCandidateId = null;
   viewEl.addEventListener('pointerdown', function (e) {
     if (e.target.closest('[contenteditable="true"]')) return;
+    var hitNode = e.target.closest('.node');
+    if (dragBoxes && hitNode && !e.target.closest('.tog') && e.button === 0) {
+      var di = info.get(hitNode.dataset.id);
+      if (di) { select(hitNode.dataset.id); nodeDrag = { id: hitNode.dataset.id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: di.x, y: di.y, moved: false, el: di.el }; di.el.classList.add('is-dragging'); try { viewEl.setPointerCapture(e.pointerId); } catch (err) {} e.preventDefault(); return; }
+    }
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (ptrs.size === 1) { moved = false; start = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty }; }
     if (ptrs.size === 2) { var a = Array.from(ptrs.values()); pinch0 = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), s: view.s, tx: view.tx, ty: view.ty }; moved = true; }
   });
   viewEl.addEventListener('pointermove', function (e) {
+    if (nodeDrag && nodeDrag.pointerId === e.pointerId) {
+      var dxn = (e.clientX - nodeDrag.startX) / view.s, dyn = (e.clientY - nodeDrag.startY) / view.s;
+      if (Math.hypot(dxn, dyn) > 3) nodeDrag.moved = true;
+      if (nodeDrag.moved) {
+        var ni = info.get(nodeDrag.id);
+        if (ni) { ni.x = nodeDrag.x + dxn; ni.y = nodeDrag.y + dyn; ni.el.style.transform = 'translate(' + ni.x + 'px,' + ni.y + 'px)'; }
+        var under = document.elementFromPoint(e.clientX, e.clientY), targetEl = under && under.closest ? under.closest('.node') : null;
+        var nextId = targetEl && targetEl.dataset.id !== nodeDrag.id ? targetEl.dataset.id : null;
+        if (nextId) { var src = findNode(nodeDrag.id), trg = findNode(nextId); function hasDesc(n,id){return n.id===id||n.ch.some(function(c){return hasDesc(c,id);});} if (!src || !trg || hasDesc(src.n,nextId)) nextId = null; }
+        if (dropCandidateId !== nextId) { if (dropCandidateId && info.get(dropCandidateId)) info.get(dropCandidateId).el.classList.remove('drop-over'); dropCandidateId = nextId; if (dropCandidateId && info.get(dropCandidateId)) info.get(dropCandidateId).el.classList.add('drop-over'); }
+      }
+      return;
+    }
     if (!ptrs.has(e.pointerId)) return;
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     var rc = viewEl.getBoundingClientRect();
@@ -1011,6 +1040,24 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
     }
   });
   function endPtr(e) {
+    if (nodeDrag && nodeDrag.pointerId === e.pointerId) {
+      var finished = nodeDrag; nodeDrag = null;
+      if (dropCandidateId && info.get(dropCandidateId)) info.get(dropCandidateId).el.classList.remove('drop-over');
+      var targetId = dropCandidateId; dropCandidateId = null;
+      if (finished.el) finished.el.classList.remove('is-dragging');
+      if (finished.moved) {
+        var found = findNode(finished.id), inf = info.get(finished.id), target = targetId && findNode(targetId);
+        if (found && inf) {
+          var snap = ser();
+          if (target && found.parent && target.n.id !== found.n.id) {
+            found.parent.ch.splice(found.parent.ch.indexOf(found.n), 1); target.n.c = false; target.n.ch.push(found.n); delete found.n.pos;
+            sel = found.n.id; pushHist(snap); persist(); render(); toast('Moved under “' + target.n.t + '”.');
+          } else { found.n.pos = { x: inf.x, y: inf.y }; pushHist(snap); persist(); render(); toast('Position updated.'); }
+          suppressNodeClickUntil = Date.now() + 450;
+        }
+      }
+      return;
+    }
     ptrs.delete(e.pointerId);
     if (ptrs.size < 2) pinch0 = null;
     if (!ptrs.size) { panning = false; start = null; }
@@ -1025,6 +1072,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   }
   var lastTap = { id: null, t: 0 };
   viewEl.addEventListener('click', function (e) {
+    if (Date.now() < suppressNodeClickUntil) { e.preventDefault(); return; }
     if (e.target.closest('[contenteditable="true"]')) return;
     var nodeEl = e.target.closest('.node');
     if (nodeEl) {
@@ -1130,6 +1178,22 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   $('pUp').addEventListener('click', function () { move(-1); }); $('pDown').addEventListener('click', function () { move(1); });
   $('bUndo').addEventListener('click', undo); $('bRedo').addEventListener('click', redo);
   $('bChild').addEventListener('click', addChild); $('bSib').addEventListener('click', addSibling);
+  $('bCentral').addEventListener('click', function () {
+    var nid;
+    mutate(function () { var c = T('New central topic'); nid = c.id; c.col = root.ch.length % 6; root.ch.push(c); });
+    select(nid, true); startEdit(nid); toast('Added a new top-level topic. Rename it to get started.');
+  });
+
+  $('bDrag').addEventListener('click', function () { dragBoxes = !dragBoxes; $('bDrag').textContent = 'Drag boxes: ' + (dragBoxes ? 'On' : 'Off'); $('bDrag').setAttribute('aria-pressed', String(dragBoxes)); viewEl.classList.toggle('drag-boxes', dragBoxes); toast(dragBoxes ? 'Drag mode on: drag a box to reposition it.' : 'Drag mode off: drag empty space to pan.'); });
+  $('bReconnect').addEventListener('click', function () {
+    if (!sel || sel === root.id) { toast('Select a non-root box first.'); return; }
+    var picked = findNode(sel); if (!picked || !picked.parent) { toast('Could not find the selected box.'); return; }
+    var selectedInfo = info.get(sel), candidate = null, best = Infinity; if (!selectedInfo) return;
+    var cx = selectedInfo.x + selectedInfo.w / 2, cy = selectedInfo.y + selectedInfo.h / 2;
+    function contains(n, id) { return n.id === id || n.ch.some(function (c) { return contains(c, id); }); }
+    info.forEach(function (other, id) { if (id === sel || contains(picked.n, id)) return; var d = Math.hypot(cx - (other.x + other.w / 2), cy - (other.y + other.h / 2)); if (d < best) { best = d; candidate = other.n; } });
+    if (!candidate) return; var snap = ser(); picked.parent.ch = picked.parent.ch.filter(function (n) { return n.id !== sel; }); candidate.ch.push(picked.n); delete picked.n.pos; pushHist(snap); persist(); render(); toast('Reconnected to closest box: ' + candidate.t);
+  });
   $('bEdit').addEventListener('click', function () { if (sel) startEdit(sel); });
   $('bDel').addEventListener('click', del);
   $('bZin').addEventListener('click', function () { zoomAt(viewEl.clientWidth / 2, viewEl.clientHeight / 2, 1.25); });
