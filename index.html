@@ -370,45 +370,61 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
   var initialTheme='light'; try{initialTheme=localStorage.getItem(THEMEKEY)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}
   applyTheme(initialTheme);
   function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')}
-  /* Supabase auth + private cloud library. Connection settings are per-browser. */
-  var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=false, cloudChannel=null, lastCloudStamp=0;
-    /* Supabase connection settings */
-  var SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
-  var SUPABASE_PUBLISHABLE_KEY = 'https://mvkavyeptcatpteuzpbg.supabase.co';
+ /* Supabase auth + private cloud library. */
+var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=false, cloudChannel=null, lastCloudStamp=0;
 
-  function setAuthMessage(msg){var el=$('authMessage');if(el)el.textContent=msg;}
-  function authStatus(msg){var el=$('authStatus');if(el)el.textContent=msg;}
+/* Supabase connection settings */
+var SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
+var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Zyw8kNPadT5DJVgfIR9iAg_2o00OZrU';
 
-  function initSupabase(){
-    if($('sbUrl')) $('sbUrl').value=SUPABASE_URL;
-    if($('sbKey')) $('sbKey').value=SUPABASE_PUBLISHABLE_KEY;
+function setAuthMessage(msg){
+  var el=$('authMessage');
+  if(el)el.textContent=msg;
+}
 
-    if(!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY ||
-       !window.supabase || !window.supabase.createClient){
-      sbClient=null;
-      return false;
-    }
+function authStatus(msg){
+  var el=$('authStatus');
+  if(el)el.textContent=msg;
+}
 
-    try {
-      sbClient=window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY,
-        {auth:{
+function initSupabase(){
+  if($('sbUrl')) $('sbUrl').value=SUPABASE_URL;
+  if($('sbKey')) $('sbKey').value=SUPABASE_PUBLISHABLE_KEY;
+
+  if(!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY ||
+     !window.supabase || !window.supabase.createClient){
+    sbClient=null;
+    return false;
+  }
+
+  try {
+    sbClient=window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY,
+      {
+        auth:{
           persistSession:true,
           autoRefreshToken:true,
           detectSessionInUrl:true
-        }}
-      );
-      return true;
-    } catch(e) {
-      sbClient=null;
-      return false;
-    }
-  }  }
-  function setSignedIn(user){sbUser=user||null; $('signOut').hidden=!sbUser; $('authToggle').textContent=sbUser?'Account':'Sign in / Create account'; authStatus(sbUser?'Signed in as '+(sbUser.email||'Google user')+' · cloud sync enabled':'Not signed in · saving on this device');}
-  function syncCloudNow(){
-    if(!sbClient||!sbUser||!lib)return Promise.resolve();
-    if(cloudBusy){cloudAgain=true;return Promise.resolve();} cloudBusy=true;
+        }
+      }
+    );
+    return true;
+  } catch(e) {
+    sbClient=null;
+    return false;
+  }
+}
+
+function setSignedIn(user){
+  sbUser=user||null;
+  $('signOut').hidden=!sbUser;
+  $('authToggle').textContent=sbUser?'Account':'Sign in / Create account';
+  authStatus(sbUser?'Signed in as '+(sbUser.email||'Google user')+' · cloud sync enabled':'Not signed in · saving on this device');
+}
+
+function syncCloudNow(){
+  if(!sbClient||!sbUser||!lib)return Promise.resolve();    if(cloudBusy){cloudAgain=true;return Promise.resolve();} cloudBusy=true;
     var snapshot=JSON.parse(JSON.stringify(lib));
     return sbClient.from('mindmap_libraries').upsert({user_id:sbUser.id,data:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'}).then(function(res){if(res.error)throw res.error;authStatus('Signed in · cloud saved '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));}).catch(function(err){authStatus('Cloud save failed · '+(err.message||'check Supabase setup'));}).finally(function(){cloudBusy=false;if(cloudAgain){cloudAgain=false;syncCloudNow();}});
   }
