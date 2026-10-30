@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Link2, Pencil, Plus, StickyNote, Trash2, Unlink } from 'lucide-react';
+import { ChevronDown, ChevronRight, GitFork, Link2, Pencil, Plus, StickyNote, Trash2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,9 @@ export type NodeSelectionBarProps = {
   detachDisabled?: boolean;
   onDelete: () => void;
   onCollapseToggle: () => void;
+  reparentActive?: boolean;
+  reparentDisabled?: boolean;
+  onReparentToggle?: () => void;
   collapsed?: boolean;
   className?: string;
 };
@@ -27,26 +30,36 @@ export function NodeSelectionBar({
   detachDisabled = false,
   onDelete,
   onCollapseToggle,
+  reparentActive = false,
+  reparentDisabled = false,
+  onReparentToggle,
   collapsed = false,
   className,
 }: NodeSelectionBarProps) {
-  if (!selectedId) {
-    return null;
-  }
-
+  const visible = selectedId !== null;
   const collapseActionLabel = collapsed ? 'Expand branch' : 'Collapse branch';
   const collapseShortLabel = collapsed ? 'Expand' : 'Collapse';
 
   return (
+    // Zero-height overlay: the bar floats over the canvas and reserves no layout space.
+    <div
+      className={cn(
+        'pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-3',
+        className,
+      )}
+    >
     <div
       role="toolbar"
       aria-label="Selected node actions"
+      aria-hidden={!visible}
+      inert={!visible}
       data-tour="node-actions"
+      data-state={visible ? 'open' : 'closed'}
       className={cn(
-        'glass-panel fixed inset-x-3 bottom-3 z-30 mx-auto max-w-xl items-stretch justify-around gap-1 rounded-[22px] px-2 py-2 shadow-float',
-        'pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]',
-        'hidden max-lg:flex [@media(any-pointer:coarse)]:flex',
-        className,
+        'glass-panel pointer-events-auto flex w-max max-w-full snap-x snap-mandatory gap-0.5 overflow-x-auto overscroll-x-contain rounded-[22px] border border-ink/15 bg-panel/95 p-1.5 shadow-float backdrop-blur-md',
+        'motion-safe:transition-[transform,opacity] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.16,1,0.3,1)]',
+        'focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30',
+        visible ? 'translate-y-0 opacity-100' : 'translate-y-[calc(100%+1.5rem)] opacity-0',
       )}
     >
       <ToolbarButton label="Add child" shortLabel="Add" onClick={onAddChild}>
@@ -58,6 +71,17 @@ export function NodeSelectionBar({
       <ToolbarButton label="Edit notes" shortLabel="Notes" onClick={onNotes}>
         <StickyNote />
       </ToolbarButton>
+      {onReparentToggle ? (
+        <ToolbarButton
+          label={reparentActive ? 'Cancel move' : 'Move under another node'}
+          shortLabel="Move"
+          onClick={onReparentToggle}
+          disabled={reparentDisabled}
+          pressed={reparentActive}
+        >
+          <GitFork />
+        </ToolbarButton>
+      ) : null}
       <ToolbarButton
         label={detached ? 'Attach to root' : 'Detach from parent'}
         shortLabel={detached ? 'Attach' : 'Detach'}
@@ -77,6 +101,7 @@ export function NodeSelectionBar({
         <Trash2 />
       </ToolbarButton>
     </div>
+    </div>
   );
 }
 
@@ -86,6 +111,7 @@ type ToolbarButtonProps = {
   onClick: () => void;
   variant?: 'ghost' | 'destructive';
   disabled?: boolean;
+  pressed?: boolean;
   children: ReactNode;
 };
 
@@ -95,14 +121,16 @@ function ToolbarButton({
   onClick,
   variant = 'ghost',
   disabled = false,
+  pressed = false,
   children,
 }: ToolbarButtonProps) {
   return (
     <Button
       type="button"
-      variant={variant}
+      variant={pressed ? 'primary' : variant}
       disabled={disabled}
-      className="h-auto min-h-13 min-w-17 flex-col gap-1 rounded-2xl border-transparent px-2 py-2 text-[11px] leading-tight font-medium [&_svg]:size-5"
+      aria-pressed={pressed}
+      className="h-auto min-h-11 min-w-[4.25rem] shrink-0 snap-start flex-col gap-1 rounded-2xl border-transparent px-2.5 py-2 text-[11px] leading-tight font-medium touch-manipulation focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent active:scale-95 motion-safe:transition-transform [&_svg]:size-5"
       aria-label={label}
       onClick={onClick}
     >

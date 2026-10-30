@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -41,7 +42,7 @@ import {
 } from '@/domain/flow-adapter';
 import { collectDescendants } from '@/domain/map-edits';
 import type { MindMapDocument } from '@/domain/schemas';
-import { cn } from '@/lib/utils';
+import { cn, isCoarsePointer } from '@/lib/utils';
 
 const nodeTypes = { [MIND_MAP_NODE_TYPE]: MindMapFlowNode, [GHOST_NODE_TYPE]: DragGhostNode };
 
@@ -69,6 +70,7 @@ function MindMapEdge({
 
 const edgeTypes = { mindMap: MindMapEdge };
 const DRAG_THRESHOLD_PX = 4;
+const DRAG_THRESHOLD_TOUCH_PX = 12;
 
 export type MapCanvasHandle = {
   fitView: (duration?: number) => void;
@@ -80,12 +82,15 @@ type Props = {
   editingId: string | null;
   onSelect: (id: string | null) => void;
   onEditStart: (id: string) => void;
+  onToggleCollapse: (id: string) => void;
   onEditEnd: (id: string, text: string) => void;
   /** Move a node and its branch by a delta; nothing else changes. */
   onCommitMove: (id: string, dx: number, dy: number) => void;
   onReparent: (nodeId: string, newParentId: string) => void;
   onViewportChange: (viewport: MindMapDocument['viewport']) => void;
   onRemoveLink: (linkId: string) => void;
+  reparentMode: boolean;
+  onReparentModeChange: (on: boolean) => void;
 };
 
 function buildEdges(map: MindMapDocument, flowNodes: Node[], drag: DragPreview | null): Edge[] {
@@ -119,24 +124,36 @@ function MapFlowInner(
     editingId,
     onSelect,
     onEditStart,
+    onToggleCollapse,
     onEditEnd,
     onCommitMove,
     onReparent,
     onViewportChange,
     onRemoveLink,
+    reparentMode,
+    onReparentModeChange,
   }: Props,
   ref: React.ForwardedRef<MapCanvasHandle>,
 ) {
   const { fitView, setViewport } = useReactFlow();
   const [editText, setEditText] = useState('');
+  const [editBoxHeight, setEditBoxHeightState] = useState<number | undefined>(undefined);
   const framedMapIdRef = useRef<string | null>(null);
 
+  const setEditBoxHeight = useCallback((height: number) => {
+    setEditBoxHeightState((prev) => (prev === height ? prev : height));
+  }, []);
+
   const [drag, setDrag] = useState<DragPreview | null>(null);
-  const [reparentMode, setReparentMode] = useState(false);
   const dragOriginRef = useRef<{ x: number; y: number } | null>(null);
   const dragCancelledRef = useRef(false);
 
-  const baseNodes = documentToFlowNodes(map, { selectedId, editingId, editText });
+  const baseNodes = documentToFlowNodes(map, {
+    selectedId,
+    editingId,
+    editText,
+    editBoxHeight,
+  });
   const shiftedNodes = applyDragPreview(baseNodes, drag);
   const draggedBase = drag ? baseNodes.find((n) => n.id === drag.draggedId) : undefined;
   const flowNodes: Node[] =
@@ -168,6 +185,9 @@ function MapFlowInner(
     if (editingId) {
       const node = map.nodes.find((n) => n.id === editingId);
       setEditText(node?.text ?? '');
+      setEditBoxHeightState(undefined);
+    } else {
+      setEditBoxHeightState(undefined);
     }
   }, [editingId, map.nodes]);
 
@@ -176,13 +196,15 @@ function MapFlowInner(
       editingId,
       editText,
       setEditText,
+      setEditBoxHeight,
       onEditStart,
+      onToggleCollapse,
       onEditEnd,
       selectedId,
       onSelect: (id) => onSelect(id),
     });
     return () => setMindMapNodeEditorHandlers(null);
-  }, [editText, editingId, onEditEnd, onEditStart, onSelect, selectedId]);
+  }, [editText, editingId, onEditEnd, onEditStart, onToggleCollapse, onSelect, selectedId, setEditBoxHeight]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -223,7 +245,9 @@ function MapFlowInner(
     if (!origin) return null;
     const draggedId = node.id;
     const branchIds = collectDescendants(map, draggedId);
-    const wantsReparent = reparentMode || ('altKey' in event && event.altKey);
+    const isDetached = map.nodes.find((n) => n.id === draggedId)?.detached === true;
+    // A detached node drops onto a tree like normal; no modifier or mode needed.
+    const wantsReparent = reparentMode || isDetached || ('altKey' in event && event.altKey);
     const parentEdge = map.edges.find((e) => e.targetId === draggedId);
     const targetId = wantsReparent
       ? findReparentTarget(
@@ -247,6 +271,7 @@ function MapFlowInner(
   };
 
   const onNodeDragStart: OnNodeDrag = (_event, node) => {
+    if (editingId) return;
     const domainNode = map.nodes.find((n) => n.id === node.id);
     if (!domainNode) return;
     dragCancelledRef.current = false;
@@ -287,7 +312,7 @@ function MapFlowInner(
       onNodeDragStart={onNodeDragStart}
       onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}
-      nodeDragThreshold={DRAG_THRESHOLD_PX}
+      nodeDragThreshold={isCoarsePointer() ? DRAG_THRESHOLD_TOUCH_PX : DRAG_THRESHOLD_PX}
       minZoom={0.35}
       maxZoom={1.8}
       panOnDrag
@@ -301,7 +326,13 @@ function MapFlowInner(
       className="h-full w-full rounded-[20px] border border-line bg-[radial-gradient(circle,var(--color-dot)_1px,transparent_1px)] bg-size-[18px_18px] shadow-[inset_0_1px_3px_rgb(20_22_40/0.06)]"
     >
       <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="var(--color-dot)" />
-      <p className="pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-3 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-float backdrop-blur-md lg:[@media(any-pointer:fine)]:flex">
+      <p
+        className={cn(
+          'pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-3 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-float backdrop-blur-md motion-safe:transition-opacity motion-safe:duration-200 lg:[@media(any-pointer:fine)]:flex',
+          // The action bar takes this spot while a node is selected.
+          selectedId && 'opacity-0',
+        )}
+      >
         <span className="flex items-center gap-1.5">
           <kbd>Tab</kbd> child
         </span>
@@ -322,9 +353,9 @@ function MapFlowInner(
         type="button"
         data-tour="reparent"
         aria-pressed={reparentMode}
-        onClick={() => setReparentMode((on) => !on)}
+        onClick={() => onReparentModeChange(!reparentMode)}
         className={cn(
-          'absolute right-3 top-3 z-10 flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium shadow-float backdrop-blur-md motion-safe:transition-colors motion-safe:duration-150',
+          'absolute right-3 top-3 z-10 hidden min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium shadow-float backdrop-blur-md motion-safe:transition-colors motion-safe:duration-150 lg:flex',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
           reparentMode
             ? 'border-accent bg-accent text-white'
@@ -338,12 +369,14 @@ function MapFlowInner(
         role="status"
         className={cn(
           'pointer-events-none absolute left-1/2 top-3 z-10 max-w-[min(32rem,80%)] -translate-x-1/2 truncate rounded-full border border-line bg-panel px-3.5 py-1.5 text-xs shadow-float backdrop-blur-md motion-safe:transition-opacity motion-safe:duration-150',
-          drag ? 'opacity-100' : 'opacity-0',
+          drag ? 'opacity-100' : reparentMode ? 'opacity-100' : 'opacity-0',
         )}
       >
-        {!drag
-          ? ''
-          : drag.reparenting
+        {!drag && reparentMode
+          ? 'Tap the node that should become its new parent · Esc to cancel'
+          : !drag
+            ? ''
+            : drag.reparenting
             ? dragTargetText !== undefined
               ? `Release to move under “${dragTargetText || 'Untitled'}”`
               : 'Drop onto a node to make it the new parent · Esc to cancel'

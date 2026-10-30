@@ -2,7 +2,9 @@ export type MindMapNodeEditorHandlers = {
   editingId: string | null;
   editText: string;
   setEditText: (text: string) => void;
+  setEditBoxHeight: (height: number) => void;
   onEditStart: (id: string) => void;
+  onToggleCollapse: (id: string) => void;
   onEditEnd: (id: string, text: string) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;

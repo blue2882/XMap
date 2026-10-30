@@ -5,6 +5,8 @@ export const NODE_H = 44;
 /** Vertical padding (py-2) plus one line of body text in the canvas node. */
 const NODE_PAD_Y = 16;
 const NODE_LINE_H = 21;
+/** Fixed picture slot (h-[100px]) plus its bottom margin. */
+export const NODE_IMAGE_H = 107;
 /** Conservative characters per wrapped line at the fixed node width (15px semibold). */
 const CHARS_PER_LINE = 17;
 
@@ -14,7 +16,8 @@ export function nodeBounds(node: MindMapNode, text?: string): NodeBounds {
   const lineCount = (text ?? node.text)
     .split('\n')
     .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0);
-  const h = Math.max(NODE_H, NODE_PAD_Y + lineCount * NODE_LINE_H);
+  const imageH = node.image ? NODE_IMAGE_H : 0;
+  const h = Math.max(NODE_H, NODE_PAD_Y + lineCount * NODE_LINE_H) + imageH;
   return { x: node.x, y: node.y, w: NODE_W, h };
 }
 

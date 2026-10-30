@@ -32,6 +32,10 @@ export const mindMapNodeSchema = z.object({
   notes: z.string().default(''),
   kind: z.enum(['topic', 'question']).default('topic'),
   detached: z.boolean().default(false),
+  /** Custom fill colour (#rrggbb). Overrides the inherited branch colour. */
+  color: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+  /** Picture shown above the label, stored as a data URL. */
+  image: z.string().optional(),
 });
 
 export const mindMapEdgeSchema = z.object({

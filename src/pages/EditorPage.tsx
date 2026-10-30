@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, Compass, Keyboard, Maximize2, Minimize2, Redo2, StickyNote, Undo2, Waypoints } from 'lucide-react';
+import { ArrowLeft, Check, Compass, Keyboard, Maximize2, Minimize2, PanelRight, Redo2, StickyNote, Undo2, Waypoints } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MapCanvas, type MapCanvasHandle } from '@/components/MapCanvas';
 import { EditorMapToolbar } from '@/components/EditorMapToolbar';
 import { DetachNodeButton } from '@/components/DetachNodeButton';
 import { NotesDialog } from '@/components/NotesDialog';
+import { NodeDetailsPanel } from '@/components/NodeDetailsPanel';
 import { NodeSelectionBar } from '@/components/NodeSelectionBar';
 import { ShortcutsDialog } from '@/components/ShortcutsDialog';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,8 @@ export function EditorPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [reparentMode, setReparentMode] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<MapCanvasHandle>(null);
@@ -77,10 +80,6 @@ export function EditorPage() {
   useEffect(() => {
     if (!stored && mapId) navigate('/', { replace: true });
   }, [stored, mapId, navigate]);
-
-  useEffect(() => {
-    if (!selectedId && map.rootId) setSelectedId(map.rootId);
-  }, [map.rootId, selectedId]);
 
   const save = () => {
     if (!stored) return;
@@ -150,6 +149,10 @@ export function EditorPage() {
   useEffect(() => {
     const handleEditorKeyDown = (event: KeyboardEvent) => {
       if (editingId) return;
+      if (event.key === 'Escape' && reparentMode) {
+        setReparentMode(false);
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
 
@@ -165,14 +168,10 @@ export function EditorPage() {
 
       if (event.key === 'Tab') {
         event.preventDefault();
-        const { map: next, newNodeId } = addChildNode(map, selectedId);
-        commit(next);
-        setSelectedId(newNodeId);
+        commit(addChildNode(map, selectedId).map);
       } else if (event.key === 'Enter') {
         event.preventDefault();
-        const { map: next, newNodeId } = addSiblingNode(map, selectedId);
-        commit(next);
-        setSelectedId(newNodeId);
+        commit(addSiblingNode(map, selectedId).map);
       } else if (event.key === 'F2') {
         event.preventDefault();
         setEditingId(selectedId);
@@ -204,7 +203,7 @@ export function EditorPage() {
 
     window.addEventListener('keydown', handleEditorKeyDown);
     return () => window.removeEventListener('keydown', handleEditorKeyDown);
-  }, [commit, editingId, map, redo, selectedId, undo]);
+  }, [commit, editingId, map, redo, reparentMode, selectedId, undo]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -216,9 +215,7 @@ export function EditorPage() {
 
   const handleAddChild = () => {
     if (!selectedId) return;
-    const { map: next, newNodeId } = addChildNode(map, selectedId);
-    commit(next);
-    setSelectedId(newNodeId);
+    commit(addChildNode(map, selectedId).map);
   };
 
   const handleDeleteSelected = () => {
@@ -268,7 +265,13 @@ export function EditorPage() {
   };
 
   const handleReparent = (nodeId: string, newParentId: string) => {
-    commit((prev) => reparentNode(prev, nodeId, newParentId));
+    const next = reparentNode(map, nodeId, newParentId);
+    if (next === map) {
+      notify.error('Cannot move there', 'A node cannot go under itself or its own branch, and the root cannot move.');
+      return;
+    }
+    commit(next);
+    setReparentMode(false);
   };
 
   const handleViewportChange = (viewport: { x: number; y: number; scale: number }) => {
@@ -317,24 +320,32 @@ export function EditorPage() {
             <IconButton label="Redo" disabled={!canRedo} onClick={redo}>
               <Redo2 />
             </IconButton>
-            <IconButton label="Edit notes" disabled={!selectedId} onClick={() => setNotesOpen(true)}>
+            <IconButton
+              label="Edit notes"
+              disabled={!selectedId}
+              className="max-lg:hidden"
+              onClick={() => setNotesOpen(true)}
+            >
               <StickyNote />
             </IconButton>
             <IconButton
               label={linkSourceId ? 'Cancel link' : 'Link to another node'}
               disabled={!selectedId && !linkSourceId}
+              className="max-lg:hidden"
               onClick={() => setLinkSourceId((current) => (current ? null : selectedId))}
             >
               <Waypoints />
             </IconButton>
-            <DetachNodeButton
-              detached={selectedNode?.detached === true}
-              disabled={!selectedId || selectedId === map.rootId}
-              onClick={() => {
-                if (!selectedId || selectedId === map.rootId) return;
-                commit(setNodeDetached(map, selectedId, selectedNode?.detached !== true));
-              }}
-            />
+            <span className="max-lg:hidden">
+              <DetachNodeButton
+                detached={selectedNode?.detached === true}
+                disabled={!selectedId || selectedId === map.rootId}
+                onClick={() => {
+                  if (!selectedId || selectedId === map.rootId) return;
+                  commit(setNodeDetached(map, selectedId, selectedNode?.detached !== true));
+                }}
+              />
+            </span>
           </div>
           <Button type="button" size="sm" variant="primary" data-tour="save" onClick={save}>
             <Check />
@@ -347,21 +358,43 @@ export function EditorPage() {
           >
             {fullscreen ? <Minimize2 /> : <Maximize2 />}
           </IconButton>
+          <IconButton
+            label={detailsOpen ? 'Hide map details' : 'Show map details'}
+            variant="default"
+            aria-pressed={detailsOpen}
+            data-tour="details-toggle"
+            onClick={() => setDetailsOpen((open) => !open)}
+          >
+            <PanelRight />
+          </IconButton>
           <IconButton label="Show the tour" onClick={() => startEditorTour()}>
             <Compass />
           </IconButton>
-          <IconButton label="Keyboard shortcuts" onClick={() => setHelpOpen(true)}>
+          <IconButton
+            label="Keyboard shortcuts"
+            className="max-lg:hidden"
+            onClick={() => setHelpOpen(true)}
+          >
             <Keyboard />
           </IconButton>
         </div>
       </header>
-      <div ref={canvasWrapRef} data-tour="canvas" className="relative min-h-0 flex-1 pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="relative flex min-h-0 flex-1 gap-3">
+      <div
+        ref={canvasWrapRef}
+        data-tour="canvas"
+        className="relative min-h-0 min-w-0 flex-1"
+      >
         <MapCanvas
           ref={canvasRef}
           map={map}
           selectedId={selectedId}
           editingId={editingId}
           onSelect={(id) => {
+            if (reparentMode && selectedId && id && id !== selectedId) {
+              handleReparent(selectedId, id);
+              return;
+            }
             if (linkSourceId && id && id !== linkSourceId) {
               commit(addManualLink(map, linkSourceId, id));
               setLinkSourceId(null);
@@ -370,14 +403,20 @@ export function EditorPage() {
           }}
           onRemoveLink={(linkId) => commit(removeManualLink(map, linkId))}
           onEditStart={setEditingId}
+          onToggleCollapse={(id) => commit((prev) => toggleNodeCollapsed(prev, id))}
           onEditEnd={handleEditEnd}
           onCommitMove={handleCommitMove}
           onReparent={handleReparent}
           onViewportChange={handleViewportChange}
+          reparentMode={reparentMode}
+          onReparentModeChange={setReparentMode}
         />
         <NodeSelectionBar
           selectedId={selectedId}
           collapsed={selectedNode?.collapsed}
+          reparentActive={reparentMode}
+          reparentDisabled={!selectedId || selectedId === map.rootId}
+          onReparentToggle={() => setReparentMode((on) => !on)}
           onAddChild={handleAddChild}
           onEdit={handleEditSelected}
           onNotes={() => setNotesOpen(true)}
@@ -390,6 +429,20 @@ export function EditorPage() {
           onDelete={handleDeleteSelected}
           onCollapseToggle={handleCollapseToggle}
         />
+      </div>
+      {detailsOpen && (
+        <NodeDetailsPanel
+          map={map}
+          selectedId={selectedId}
+          onCommit={commit}
+          onClose={() => setDetailsOpen(false)}
+          className={
+            'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300 ' +
+            'max-lg:absolute max-lg:bg-raised max-lg:inset-x-0 max-lg:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] max-lg:z-40 max-lg:max-h-[55%] max-lg:motion-safe:slide-in-from-bottom-8 ' +
+            'lg:w-[300px] lg:shrink-0 lg:motion-safe:slide-in-from-right-8'
+          }
+        />
+      )}
       </div>
       <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
       <NotesDialog

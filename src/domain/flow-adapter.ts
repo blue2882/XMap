@@ -1,6 +1,6 @@
 import type { Edge, Node } from '@xyflow/react';
 import { branchColor } from '@/domain/colors';
-import { visibleNodes } from '@/domain/map-edits';
+import { collectDescendants, visibleNodes } from '@/domain/map-edits';
 import { fanAlongSide, NODE_H, NODE_W, nodeBounds, separateBoxes } from '@/domain/node-geometry';
 import type { MindMapDocument, MindMapNode } from '@/domain/schemas';
 
@@ -9,6 +9,15 @@ export const MIND_MAP_NODE_TYPE = 'mindMapNode' as const;
 export type MindMapFlowNodeData = {
   domainNode: MindMapNode;
   isRoot: boolean;
+  /** 0 for the root and detached nodes, 1 for main branches, 2+ below. */
+  depth: number;
+  /** Which side of its parent the node grows toward; the collapse toggle sits there. */
+  side: 'left' | 'right';
+  /** Resolved fill colour: the node's custom colour or its branch colour. */
+  color: string;
+  /** Hidden descendants, shown on the toggle while collapsed. */
+  descendantCount: number;
+  hasChildren: boolean;
   selected: boolean;
   editing: boolean;
   editText?: string;
@@ -22,15 +31,34 @@ export const GHOST_NODE_TYPE = 'ghostNode' as const;
 export const GHOST_NODE_ID = '__drag-ghost__';
 export const REPARENT_PREVIEW_EDGE_ID = '__reparent-preview__';
 
+export function nodeColor(node: MindMapNode): string {
+  return node.color ?? branchColor(node.colorIndex);
+}
+
 export function documentToFlowNodes(
   map: MindMapDocument,
-  ui?: { selectedId: string | null; editingId: string | null; editText?: string },
+  ui?: {
+    selectedId: string | null;
+    editingId: string | null;
+    editText?: string;
+    editBoxHeight?: number;
+  },
 ): Node<MindMapFlowNodeData>[] {
+  const nodeById = new Map(map.nodes.map((n) => [n.id, n]));
+  const parentById = new Map(map.edges.map((e) => [e.targetId, e.sourceId]));
+  const depthOf = (id: string): number => {
+    let depth = 0;
+    for (let cur = parentById.get(id); cur; cur = parentById.get(cur)) depth += 1;
+    return depth;
+  };
   return visibleNodes(map).map((node) => {
-    const bounds = nodeBounds(
-      node,
-      ui?.editingId === node.id ? ui.editText : undefined,
-    );
+    const parent = nodeById.get(parentById.get(node.id) ?? '');
+    const side: 'left' | 'right' =
+      parent && node.x + NODE_W / 2 < parent.x + NODE_W / 2 ? 'left' : 'right';
+    const childCount = map.edges.filter((e) => e.sourceId === node.id).length;
+    const editing = ui?.editingId === node.id;
+    const bounds = nodeBounds(node, editing ? ui?.editText : undefined);
+    const height = editing && ui?.editBoxHeight ? Math.max(bounds.h, ui.editBoxHeight) : bounds.h;
     return {
       id: node.id,
       type: MIND_MAP_NODE_TYPE,
@@ -38,14 +66,20 @@ export function documentToFlowNodes(
       data: {
         domainNode: node,
         isRoot: node.id === map.rootId || node.detached === true,
+        depth: node.detached === true ? 0 : depthOf(node.id),
+        side,
+        color: nodeColor(node),
+        descendantCount: childCount > 0 ? collectDescendants(map, node.id).size - 1 : 0,
+        hasChildren: childCount > 0,
         selected: ui?.selectedId === node.id,
-        editing: ui?.editingId === node.id,
-        editText: ui?.editingId === node.id ? ui.editText : undefined,
+        editing,
+        editText: editing ? ui?.editText : undefined,
       },
       width: bounds.w,
-      height: bounds.h,
-      measured: { width: bounds.w, height: bounds.h },
-      draggable: node.id !== map.rootId,
+      height,
+      measured: { width: bounds.w, height },
+      draggable: node.id !== map.rootId && !editing,
+      zIndex: editing ? 1000 : undefined,
     };
   });
 }
@@ -79,7 +113,7 @@ export function documentToFlowEdges(map: MindMapDocument, flowNodes: Node[]): Ed
       type: 'mindMap',
       data: { fan: fanFor(flowNodes, edge.sourceId, edge.targetId, childIds(map, edge.sourceId)) },
       style: {
-        stroke: branchColor(nodeById.get(edge.targetId)?.colorIndex ?? 0),
+        stroke: nodeColorById(nodeById, edge.targetId),
         strokeWidth: 3,
         strokeOpacity: 0.6,
       },
@@ -94,7 +128,7 @@ export function documentToFlowEdges(map: MindMapDocument, flowNodes: Node[]): Ed
       ...sideHandles(flowById.get(link.sourceId), flowById.get(link.targetId)),
       type: 'mindMap',
       style: {
-        stroke: branchColor(nodeById.get(link.targetId)?.colorIndex ?? 0),
+        stroke: nodeColorById(nodeById, link.targetId),
         strokeWidth: 3,
         strokeOpacity: 0.6,
         strokeDasharray: '7 5',
@@ -103,6 +137,11 @@ export function documentToFlowEdges(map: MindMapDocument, flowNodes: Node[]): Ed
     }));
 
   return [...parentEdges, ...manualEdges];
+}
+
+function nodeColorById(nodes: Map<string, MindMapNode>, id: string): string {
+  const node = nodes.get(id);
+  return node ? nodeColor(node) : branchColor(0);
 }
 
 function childIds(map: MindMapDocument, sourceId: string): string[] {

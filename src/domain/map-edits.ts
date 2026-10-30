@@ -139,16 +139,17 @@ export function reparentNode(
   if (collectDescendants(map, nodeId).has(newParentId)) {
     return map;
   }
+  // A detached node has no parent edge; attaching it creates one and clears the flag.
   const hasIncoming = map.edges.some((e) => e.targetId === nodeId);
-  if (!hasIncoming) {
-    return map;
-  }
-
+  const edges: MindMapEdge[] = hasIncoming
+    ? map.edges.map((e) => (e.targetId === nodeId ? { ...e, sourceId: newParentId } : e))
+    : [...map.edges, { id: createId('edge'), sourceId: newParentId, targetId: nodeId }];
   const next = touch({
     ...map,
-    edges: map.edges.map((e) =>
-      e.targetId === nodeId ? { ...e, sourceId: newParentId } : e,
-    ),
+    edges,
+    nodes: hasIncoming
+      ? map.nodes
+      : map.nodes.map((n) => (n.id === nodeId ? { ...n, detached: false } : n)),
   });
   const node = nodeById(map, nodeId)!;
   const movingIds = collectDescendants(map, nodeId);
@@ -206,6 +207,24 @@ export function updateViewport(
   return { ...map, viewport };
 }
 
+/**
+ * Children inherit their branch colour. A new main branch (child of the root or
+ * a detached node) takes the least-used colour among its siblings instead, so
+ * neighbouring branches stay distinct.
+ */
+function colorIndexForChild(map: MindMapDocument, parent: MindMapNode): number {
+  const startsBranch = parent.id === map.rootId || parent.detached === true;
+  if (!startsBranch) return parent.colorIndex;
+  const used = childrenOf(map, parent.id).map((id) => nodeById(map, id)?.colorIndex);
+  const counts = Array.from({ length: COLOR_COUNT }, (_, i) => used.filter((c) => c === i).length);
+  const least = Math.min(...counts);
+  for (let step = 1; step <= COLOR_COUNT; step += 1) {
+    const index = (parent.colorIndex + step) % COLOR_COUNT;
+    if (counts[index] === least) return index;
+  }
+  return (parent.colorIndex + 1) % COLOR_COUNT;
+}
+
 export function addChildNode(
   map: MindMapDocument,
   parentId: string,
@@ -229,7 +248,7 @@ export function addChildNode(
     text,
     x: slot.x,
     y: slot.y,
-    colorIndex: (parent.colorIndex + 1) % COLOR_COUNT,
+    colorIndex: colorIndexForChild(map, parent),
     collapsed: false,
   };
   const next = touch({

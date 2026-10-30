@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   addChildNode,
+  addSiblingNode,
   deleteNode,
   relayoutMap,
   reparentNode,
 } from '@/domain/map-edits';
 import { createEmptyMap } from '@/domain/map-factory';
+import { setNodeDetached } from '@/domain/node-detach';
 
 describe('map tree edits', () => {
   it('addChildNode increases the number of nodes', () => {
@@ -92,5 +94,50 @@ describe('map tree edits', () => {
     const root = moved.nodes.find((n) => n.id === map.rootId)!;
     const beforeRoot = parked.find((n) => n.id === map.rootId)!;
     expect([root.x, root.y]).toEqual([beforeRoot.x, beforeRoot.y]);
+  });
+
+  it('new ideas inherit their branch colour', () => {
+    const map = createEmptyMap('Test');
+    const { map: m1, newNodeId: branch } = addChildNode(map, map.rootId, 'Branch');
+    const { map: m2, newNodeId: child } = addChildNode(m1, branch, 'Child');
+    const { map: m3, newNodeId: grandchild } = addChildNode(m2, child, 'Grandchild');
+    const { map: m4, newNodeId: sibling } = addSiblingNode(m3, grandchild);
+    const color = (id: string) => m4.nodes.find((n) => n.id === id)!.colorIndex;
+    expect(color(child)).toBe(color(branch));
+    expect(color(grandchild)).toBe(color(branch));
+    expect(color(sibling)).toBe(color(branch));
+  });
+
+  it('new main branches pick distinct colours', () => {
+    let map = createEmptyMap('Test');
+    const colors: number[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      const result = addChildNode(map, map.rootId, `B${i}`);
+      map = result.map;
+      colors.push(map.nodes.find((n) => n.id === result.newNodeId)!.colorIndex);
+    }
+    expect(new Set(colors).size).toBe(6);
+  });
+
+  it('reparentNode reattaches a detached node under the chosen parent', () => {
+    const map = createEmptyMap('Test');
+    const { map: m1, newNodeId: a } = addChildNode(map, map.rootId, 'A');
+    const { map: m2, newNodeId: b } = addChildNode(m1, map.rootId, 'B');
+    const detached = setNodeDetached(m2, b, true);
+    expect(detached.edges.some((e) => e.targetId === b)).toBe(false);
+
+    const next = reparentNode(detached, b, a);
+    expect(next.edges.filter((e) => e.targetId === b)).toEqual([
+      expect.objectContaining({ sourceId: a, targetId: b }),
+    ]);
+    expect(next.nodes.find((n) => n.id === b)!.detached).toBe(false);
+  });
+
+  it('reparentNode still refuses to drop a detached node into its own branch', () => {
+    const map = createEmptyMap('Test');
+    const { map: m1, newNodeId: a } = addChildNode(map, map.rootId, 'A');
+    const { map: m2, newNodeId: a1 } = addChildNode(m1, a, 'A1');
+    const detached = setNodeDetached(m2, a, true);
+    expect(reparentNode(detached, a, a1)).toBe(detached);
   });
 });
