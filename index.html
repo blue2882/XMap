@@ -272,7 +272,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
       <div class="field"><label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div>
       <div class="row"><button class="btn primary" id="emailSignIn">Sign in</button><button class="btn" id="emailSignUp">Create account</button><button class="btn" id="googleSignIn">Continue with Google</button><button class="btn" id="passwordReset">Reset password</button></div>
       <p id="authMessage" aria-live="polite">Configure your Supabase project below to enable account access.</p>
-      <details><summary>Supabase connection settings</summary><div class="field"><label for="sbUrl">Project URL</label><input id="sbUrl" type="url" placeholder="https://your-project.supabase.co" autocomplete="url"></div><div class="field"><label for="sbKey">Publishable / anon key</label><input id="sbKey" type="password" placeholder="sb_publishable_… or anon key" autocomplete="off"></div><button class="btn" id="saveSupabase">Save connection settings</button><p>Use only your Supabase project URL and publishable (anon) key here. Never put a service-role key in a browser app.</p></details>
+      
     </div>
     <div class="folderbar"><label for="folderFilter">Folder</label><select id="folderFilter" aria-label="Filter maps by folder"><option value="__all">All folders</option></select><button class="btn" id="lFolder">＋ New folder</button><span id="saveStatus" role="status">Saved on this device</span></div>
     <div class="tip" id="installTip" hidden>To install: tap the Share button in Safari, then Add to Home Screen. The app then opens full screen and works offline. Maps are stored on this device, so use Export on a card to keep a backup.</div>
@@ -360,7 +360,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
 <div id="toast" hidden></div>
 
 <script src="jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 (function () {
   var LKEY = 'mindmaps-library-v1';
@@ -376,6 +376,7 @@ var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=fal
 /* Supabase connection settings */
 var SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
 var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Zyw8kNPadT5DJVgfIR9iAg_2o00OZrU';
+var authSub = null;
 
 function setAuthMessage(msg){
   var el=$('authMessage');
@@ -388,8 +389,7 @@ function authStatus(msg){
 }
 
 function initSupabase(){
-  if($('sbUrl')) $('sbUrl').value=SUPABASE_URL;
-  if($('sbKey')) $('sbKey').value=SUPABASE_PUBLISHABLE_KEY;
+  if(sbClient) return true; /* reuse the single client */
 
   if(!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY ||
      !window.supabase || !window.supabase.createClient){
@@ -442,7 +442,9 @@ function syncCloudNow(){
   function refreshAuth(){
     if(!initSupabase()){setSignedIn(null);return;}
     sbClient.auth.getSession().then(function(r){if(r.error)throw r.error;var u=r.data.session&&r.data.session.user;setSignedIn(u);if(u){loadCloudLibrary();subscribeCloud();}}).catch(function(e){setAuthMessage(e.message||'Could not check login status.');});
-    sbClient.auth.onAuthStateChange(function(event,session){var u=session&&session.user;setSignedIn(u);if(event==='SIGNED_IN'&&u){setTimeout(function(){loadCloudLibrary();subscribeCloud();},0);$('authBox').hidden=true;} if(event==='SIGNED_OUT'){if(cloudChannel){sbClient.removeChannel(cloudChannel);cloudChannel=null;}} });
+    if(authSub){try{authSub.unsubscribe()}catch(e){} authSub=null;}
+    var sub=sbClient.auth.onAuthStateChange(function(event,session){var u=session&&session.user;setSignedIn(u);if(event==='SIGNED_IN'&&u){setTimeout(function(){loadCloudLibrary();subscribeCloud();},0);$('authBox').hidden=true;} if(event==='SIGNED_OUT'){if(cloudChannel){sbClient.removeChannel(cloudChannel);cloudChannel=null;}} });
+    authSub=sub&&sub.data&&sub.data.subscription||null;
   }
   function authAction(promise,success){setAuthMessage('Please wait…');Promise.resolve(promise).then(function(r){if(r&&r.error)throw r.error;if(success)setAuthMessage(success);else setAuthMessage('Check your email if confirmation is required.');}).catch(function(e){setAuthMessage(e.message||'Authentication failed.');});}
   document.addEventListener('DOMContentLoaded',function(){ });
@@ -1322,11 +1324,10 @@ function syncCloudNow(){
   /* Account and appearance controls */
   $('themeToggle').addEventListener('click',toggleTheme); $('themeToggleEditor').addEventListener('click',toggleTheme);
   $('authToggle').addEventListener('click',function(){$('authBox').hidden=!$('authBox').hidden;if(!$('authBox').hidden)initSupabase();});
-  $('saveSupabase').addEventListener('click',function(){var url=$('sbUrl').value.trim().replace(/\/$/,''),key=$('sbKey').value.trim();if(!/^https:\/\/[a-zA-Z0-9.-]+$/.test(url)||!key){setAuthMessage('Enter a valid Supabase project URL and publishable/anon key.');return;}localStorage.setItem(SBKEY,JSON.stringify({url:url,key:key}));setAuthMessage('Settings saved. Connecting…');refreshAuth();});
-  $('emailSignUp').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}var email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||password.length<6){setAuthMessage('Enter an email and a password of at least 6 characters.');return;}authAction(sbClient.auth.signUp({email:email,password:password,options:{emailRedirectTo:location.origin+location.pathname}}),'Account created. Check your email if confirmation is enabled.');});
-  $('emailSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}authAction(sbClient.auth.signInWithPassword({email:$('authEmail').value.trim(),password:$('authPassword').value}));});
-  $('googleSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}authAction(sbClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}));});
-  $('passwordReset').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}var email=$('authEmail').value.trim();if(!email){setAuthMessage('Enter your email address first.');return;}authAction(sbClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}),'Password reset email requested.');});
+  $('emailSignUp').addEventListener('click',function(){if(!sbClient){setAuthMessage('Cloud sync is unavailable right now (could not load Supabase). Check your connection and reload.');return;}var email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||password.length<6){setAuthMessage('Enter an email and a password of at least 6 characters.');return;}authAction(sbClient.auth.signUp({email:email,password:password,options:{emailRedirectTo:location.origin+location.pathname}}),'Account created. Check your email if confirmation is enabled.');});
+  $('emailSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Cloud sync is unavailable right now (could not load Supabase). Check your connection and reload.');return;}authAction(sbClient.auth.signInWithPassword({email:$('authEmail').value.trim(),password:$('authPassword').value}));});
+  $('googleSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Cloud sync is unavailable right now (could not load Supabase). Check your connection and reload.');return;}authAction(sbClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}));});
+  $('passwordReset').addEventListener('click',function(){if(!sbClient){setAuthMessage('Cloud sync is unavailable right now (could not load Supabase). Check your connection and reload.');return;}var email=$('authEmail').value.trim();if(!email){setAuthMessage('Enter your email address first.');return;}authAction(sbClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}),'Password reset email requested.');});
   $('signOut').addEventListener('click',function(){if(sbClient)authAction(sbClient.auth.signOut(),'Signed out. Your local copy remains on this device.');});
     var standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   $('installTip').hidden = standalone;
