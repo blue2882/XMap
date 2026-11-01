@@ -1,5 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,9 +23,11 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { importWithAnthropic } from '@/features/import/ai-import';
+import { redactApiKeyLikeText } from '@/features/import/ai-import-errors';
 import { parseJsonImport } from '@/features/import/json-import';
 import { extractPptxSlides, importPptxFile } from '@/features/import/pptx';
 import { notify } from '@/lib/notify';
+import type { MindMapDocument } from '@/domain/schemas';
 import { useLibraryStore } from '@/stores/library-store';
 
 type Props = {
@@ -29,9 +41,33 @@ type Props = {
 export function ImportDialog({ open, onOpenChange, initialFile, onImported, onBusy }: Props) {
   const [jsonText, setJsonText] = useState('');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [staleImport, setStaleImport] = useState<{
+    map: MindMapDocument;
+    existingName: string;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const apiKey = useLibraryStore((s) => s.settings.anthropicApiKey);
   const importMap = useLibraryStore((s) => s.importMap);
+
+  const finish = (mapId: string, name: string) => {
+    onOpenChange(false);
+    setJsonText('');
+    setPendingFile(null);
+    setStaleImport(null);
+    notify.success('Import complete', name);
+    onImported(mapId);
+  };
+
+  const applyImport = (map: MindMapDocument, force = false) => {
+    const result = importMap(map, force ? { force: true } : undefined);
+    if (!result.ok) {
+      if (result.reason === 'stale') {
+        setStaleImport({ map, existingName: result.existingName });
+      }
+      return;
+    }
+    finish(result.id, map.name);
+  };
 
   const aiMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -47,14 +83,6 @@ export function ImportDialog({ open, onOpenChange, initialFile, onImported, onBu
     onSettled: () => onBusy(null),
   });
 
-  const finish = (mapId: string, name: string) => {
-    onOpenChange(false);
-    setJsonText('');
-    setPendingFile(null);
-    notify.success('Import complete', name);
-    onImported(mapId);
-  };
-
   const handleFile = (file: File | null) => {
     if (!file) return;
     setPendingFile(file);
@@ -63,8 +91,7 @@ export function ImportDialog({ open, onOpenChange, initialFile, onImported, onBu
   const importJson = () => {
     try {
       const map = parseJsonImport(jsonText);
-      const id = importMap(map);
-      finish(id, map.name);
+      applyImport(map);
     } catch (err) {
       notify.error('Invalid JSON', err instanceof Error ? err.message : 'Could not parse file.');
     }
@@ -76,8 +103,7 @@ export function ImportDialog({ open, onOpenChange, initialFile, onImported, onBu
     try {
       onBusy({ title: 'Importing deck', message: file.name });
       const map = await importPptxFile(file);
-      const id = importMap(map);
-      finish(id, map.name);
+      applyImport(map);
     } catch (err) {
       notify.error('Import failed', err instanceof Error ? err.message : 'Could not read deck.');
     } finally {
@@ -94,16 +120,18 @@ export function ImportDialog({ open, onOpenChange, initialFile, onImported, onBu
     }
     try {
       const map = await aiMutation.mutateAsync(file);
-      const id = importMap(map);
-      finish(id, map.name);
+      applyImport(map);
     } catch (err) {
-      notify.error('AI import failed', err instanceof Error ? err.message : 'Request failed.');
+      const message =
+        err instanceof Error ? redactApiKeyLikeText(err.message) : 'Request failed.';
+      notify.error('AI import failed', message);
     }
   };
 
   const selectedFile = pendingFile ?? initialFile;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -172,5 +200,31 @@ export function ImportDialog({ open, onOpenChange, initialFile, onImported, onBu
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={staleImport != null} onOpenChange={(next) => !next && setStaleImport(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Replace newer map?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {staleImport
+              ? `"${staleImport.existingName}" in your library was edited more recently than this import. Replacing it will discard your newer changes.`
+              : null}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep library version</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (staleImport) {
+                applyImport(staleImport.map, true);
+                setStaleImport(null);
+              }
+            }}
+          >
+            Replace anyway
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -11,6 +11,7 @@ import {
 const COLOR_COUNT = 6;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 4;
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 type ParsedMap = LibraryState['maps'][number];
 type Rec = Record<string, unknown>;
@@ -35,6 +36,16 @@ function colorIndex(v: unknown, fallback = 0): number {
   const n = Math.trunc(num(v, fallback));
   return ((n % COLOR_COUNT) + COLOR_COUNT) % COLOR_COUNT;
 }
+
+const optionalHexColor = (v: unknown): string | undefined => {
+  const s = str(v);
+  return s && HEX_COLOR.test(s) ? s : undefined;
+};
+
+const optionalImage = (v: unknown): string | undefined => {
+  const s = str(v);
+  return s || undefined;
+};
 
 function isoFromEpoch(v: unknown, fallback: string): string {
   const ms = num(v, NaN);
@@ -112,7 +123,7 @@ function migrateFlatNode(raw: unknown): Rec | null {
   if (!isRec(raw)) return null;
   const id = str(raw.id);
   if (!id) return null;
-  return {
+  const node: Rec = {
     id,
     text: str(first(raw, ['text', 'label', 'title', 'name'])) ?? '',
     x: num(raw.x, 0),
@@ -123,6 +134,11 @@ function migrateFlatNode(raw: unknown): Rec | null {
     kind: raw.kind === 'question' ? 'question' : 'topic',
     detached: raw.detached === true,
   };
+  const color = optionalHexColor(raw.color);
+  if (color) node.color = color;
+  const image = optionalImage(raw.image);
+  if (image) node.image = image;
+  return node;
 }
 
 function migrateFlatEdges(rawEdges: unknown, nodeIds: Set<string>): Rec[] {

@@ -21,13 +21,15 @@ import { ShortcutsDialog } from '@/components/ShortcutsDialog';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { AuthDialog } from '@/features/cloud/AuthDialog';
+import { signOutSafely } from '@/features/cloud/library-sync';
 import { useCloudLibrary } from '@/features/cloud/useCloudLibrary';
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
-import { supabase } from '@/lib/supabase';
+import { isCloudSyncDisabledInThisBuild, supabaseDeployConfigMessage } from '@/lib/supabase';
 import { formatCount } from '@/lib/format';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { startLibraryTour, tourSeen, LIBRARY_TOUR_KEY } from '@/features/tour/start-tour';
+import { firstImportFileFromDataTransfer } from '@/lib/dropped-import-file';
 import { useLibraryStore } from '@/stores/library-store';
 
 type Busy = { title: string; message?: string } | null;
@@ -99,13 +101,13 @@ export function LibraryPage() {
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     setDropActive(false);
-    const file = event.dataTransfer.files?.[0];
-    if (!file) return;
-    const lower = file.name.toLowerCase();
-    if (lower.endsWith('.json') || lower.endsWith('.pptx')) {
+    const file = firstImportFileFromDataTransfer(event.dataTransfer);
+    if (file) {
       setPendingFile(file);
       setImportOpen(true);
-    } else {
+      return;
+    }
+    if (event.dataTransfer.files?.length) {
       notify.error('Unsupported file', 'Drop a .json or .pptx file.');
     }
   };
@@ -181,6 +183,14 @@ export function LibraryPage() {
         {dropActive ? 'Drop .json or .pptx to import' : ''}
       </p>
       <div className="mx-auto flex w-full max-w-270 flex-col gap-6 px-1 sm:px-0">
+        {isCloudSyncDisabledInThisBuild ? (
+          <div
+            role="status"
+            className="rounded-xl border border-line bg-sunken px-4 py-3 text-sm text-ink"
+          >
+            {supabaseDeployConfigMessage}
+          </div>
+        ) : null}
         <DndContext
           sensors={sensors}
           onDragStart={handleLibraryDragStart}
@@ -200,7 +210,7 @@ export function LibraryPage() {
                 type="button"
                 size="sm"
                 onClick={() => {
-                  void supabase.auth.signOut();
+                  void signOutSafely();
                 }}
               >
                 Sign out

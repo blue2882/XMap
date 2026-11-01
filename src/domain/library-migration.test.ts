@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { migrateLibrary } from '@/domain/library-migration';
+import { migrateLibrary, migrateMap } from '@/domain/library-migration';
 
 const goodMap = (id: string) => ({
   id, name: id, rootId: 'r',
@@ -45,6 +45,58 @@ describe('migrateLibrary', () => {
 
   it('returns an empty library for non-object input', () => {
     expect(migrateLibrary(undefined).library.maps).toEqual([]);
+  });
+
+  it('round-trips custom hex color and image on flat nodes', () => {
+    const styled = {
+      ...goodMap('styled'),
+      nodes: [{
+        id: 'r',
+        text: 'root',
+        x: 0,
+        y: 0,
+        colorIndex: 0,
+        color: '#ff0000',
+        image: 'data:image/png;base64,abc',
+      }],
+    };
+    const { library } = migrateLibrary({ folders: [], maps: [styled] });
+    expect(library.maps[0].nodes[0].color).toBe('#ff0000');
+    expect(library.maps[0].nodes[0].image).toBe('data:image/png;base64,abc');
+    const again = migrateLibrary(library).library;
+    expect(again.maps[0].nodes[0].color).toBe('#ff0000');
+    expect(again.maps[0].nodes[0].image).toBe('data:image/png;base64,abc');
+  });
+
+  it('drops invalid custom color but keeps the node', () => {
+    const map = {
+      ...goodMap('bad-color'),
+      nodes: [{ id: 'r', text: 'root', x: 0, y: 0, colorIndex: 0, color: 'red' }],
+    };
+    const { library } = migrateLibrary({ folders: [], maps: [map] });
+    expect(library.maps[0].nodes[0].color).toBeUndefined();
+  });
+});
+
+describe('migrateMap', () => {
+  it('preserves color and image on a flat map document', () => {
+    const raw = {
+      ...goodMap('m'),
+      nodes: [{
+        id: 'r',
+        text: 'root',
+        x: 0,
+        y: 0,
+        colorIndex: 2,
+        color: '#ff0000',
+        image: 'data:image/png;base64,xyz',
+      }],
+    };
+    const result = migrateMap(raw);
+    expect('map' in result).toBe(true);
+    if (!('map' in result)) return;
+    expect(result.map.nodes[0].color).toBe('#ff0000');
+    expect(result.map.nodes[0].image).toBe('data:image/png;base64,xyz');
   });
 });
 
@@ -147,8 +199,8 @@ describe('migrateLibrary with the legacy Supabase tree format', () => {
   });
 });
 
-describe('data.json', () => {
-  const raw = JSON.parse(readFileSync(new URL('../../data.json', import.meta.url), 'utf8')) as {
+describe('data.json.example', () => {
+  const raw = JSON.parse(readFileSync(new URL('../../data.json.example', import.meta.url), 'utf8')) as {
     maps: { id: string; root: { detached?: boolean; pos?: { x: number; y: number }; ch?: unknown[] } }[];
   };
   const { library, quarantined } = migrateLibrary(raw);

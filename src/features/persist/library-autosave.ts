@@ -1,4 +1,5 @@
 import { flushCloudSave } from '@/features/cloud/library-sync';
+import { notify } from '@/lib/notify';
 import {
   LIBRARY_STORAGE_KEY,
   writeLibraryPersistBlob,
@@ -23,11 +24,17 @@ export function buildPersistedLibraryJson(): string {
 
 /** Ensures the latest library snapshot is on disk (IndexedDB in the app). */
 export async function flushLibraryToDisk(): Promise<void> {
-  await writeLibraryPersistBlob(LIBRARY_STORAGE_KEY, buildPersistedLibraryJson());
+  try {
+    await writeLibraryPersistBlob(LIBRARY_STORAGE_KEY, buildPersistedLibraryJson());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not save library locally.';
+    notify.error('Local save failed', message);
+    throw error;
+  }
 }
 
 function flushOnBackground(): void {
-  void flushLibraryToDisk();
+  void flushLibraryToDisk().catch(() => undefined);
   void flushCloudSave();
 }
 

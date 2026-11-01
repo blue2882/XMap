@@ -2,14 +2,19 @@ import { migrateLibrary } from '@/domain/library-migration';
 import { flushLibraryToDisk } from '@/features/persist/library-autosave';
 import { useLibraryStore } from '@/stores/library-store';
 
-/** Dev-only: load repo root data.json so reference maps match the legacy fixture. */
+/** Dev-only: load gitignored data.json or committed data.json.example for legacy fixture maps. */
 export async function seedReferenceLibrary(): Promise<void> {
-  const response = await fetch(new URL('../../../data.json', import.meta.url));
-  if (!response.ok) {
-    console.warn('Reference library seed skipped:', response.status);
+  let raw: unknown | null = null;
+  for (const path of ['../../../data.json', '../../../data.json.example'] as const) {
+    const response = await fetch(new URL(path, import.meta.url));
+    if (!response.ok) continue;
+    raw = await response.json();
+    break;
+  }
+  if (raw === null) {
+    console.warn('Reference library seed skipped: no data.json or data.json.example');
     return;
   }
-  const raw: unknown = await response.json();
   const { library, quarantined } = migrateLibrary(raw);
   if (quarantined.length > 0) {
     console.warn('Reference seed quarantined maps', quarantined.length);

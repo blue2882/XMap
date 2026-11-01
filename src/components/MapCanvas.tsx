@@ -217,7 +217,7 @@ function MapFlowInner(
   useEffect(() => {
     if (framedMapIdRef.current !== map.id) return;
     setViewport(viewportToFlow(map.viewport), { duration: 0 });
-  }, [map.id, map.viewport.x, map.viewport.y, map.viewport.scale, setViewport]);
+  }, [map.id, map.viewport, setViewport]);
 
   useImperativeHandle(ref, () => ({
     fitView: (duration = 200) => {

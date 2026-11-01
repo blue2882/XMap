@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { QuarantinedMap } from '@/domain/library-migration';
 import { QUARANTINE_STORAGE_KEY } from '@/domain/schemas';
 import {
+  appendQuarantine,
   dismissQuarantineAt,
   quarantineEntryName,
   readQuarantineList,
+  readQuarantineListResult,
   writeQuarantineList,
 } from '@/domain/quarantine';
 
@@ -24,9 +26,16 @@ describe('quarantine helpers', () => {
     expect(readQuarantineList(storage)).toEqual([]);
 
     const entries: QuarantinedMap[] = [{ raw: { id: 'a', name: 'Alpha' }, reason: 'bad nodes' }];
-    writeQuarantineList(entries, storage);
+    expect(writeQuarantineList(entries, storage).ok).toBe(true);
     expect(storage.data.get(QUARANTINE_STORAGE_KEY)).toBe(JSON.stringify(entries));
     expect(readQuarantineList(storage)).toEqual(entries);
+  });
+
+  it('ignores corrupt quarantine entries missing reason', () => {
+    const storage = memoryStorage({
+      [QUARANTINE_STORAGE_KEY]: JSON.stringify([{ raw: { id: 'x' } }]),
+    });
+    expect(readQuarantineList(storage)).toEqual([]);
   });
 
   it('clears storage when the list is empty', () => {
@@ -48,5 +57,24 @@ describe('quarantine helpers', () => {
     expect(quarantineEntryName({ name: '  My map  ' })).toBe('My map');
     expect(quarantineEntryName({ name: '' })).toBe('Untitled map');
     expect(quarantineEntryName(null)).toBe('Untitled map');
+  });
+
+  it('reports corrupt quarantine JSON instead of treating it as empty', () => {
+    const storage = memoryStorage({ [QUARANTINE_STORAGE_KEY]: '{not json' });
+    expect(readQuarantineListResult(storage).ok).toBe(false);
+    expect(readQuarantineList(storage)).toEqual([]);
+  });
+
+  it('surfaces quota failures on append without dropping existing entries', () => {
+    const storage = memoryStorage({
+      [QUARANTINE_STORAGE_KEY]: JSON.stringify([{ raw: { id: 'a' }, reason: 'one' }]),
+    });
+    storage.setItem = () => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    };
+    const result = appendQuarantine([{ raw: { id: 'b' }, reason: 'two' }], storage);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('quota');
+    expect(readQuarantineList(storage)).toHaveLength(1);
   });
 });

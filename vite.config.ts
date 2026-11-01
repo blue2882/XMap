@@ -1,10 +1,46 @@
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
-/** GitHub Pages project sites need `/RepoName/`; Netlify and local dev use `/`. */
+/** Injected as a meta tag because GitHub Pages cannot send response headers. */
+const PRODUCTION_CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com",
+].join('; ');
+
+const productionCspMetaPlugin = (): Plugin => ({
+  name: 'production-csp-meta',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'post',
+    handler() {
+      return [
+        {
+          tag: 'meta',
+          attrs: {
+            'http-equiv': 'Content-Security-Policy',
+            content: PRODUCTION_CONTENT_SECURITY_POLICY,
+          },
+          injectTo: 'head-prepend',
+        },
+      ];
+    },
+  },
+});
+
+/** GitHub Pages project sites need `/RepoName/`; local dev uses `/`. */
 const normalizeBase = (raw: string | undefined): string => {
   if (!raw || raw === '/') return '/';
   const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
@@ -19,6 +55,7 @@ export default defineConfig({
     environment: 'node',
   },
   plugins: [
+    productionCspMetaPlugin(),
     react({
       babel: {
         plugins: ['babel-plugin-react-compiler'],

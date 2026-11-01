@@ -35,3 +35,33 @@ describe('library store rehydration', () => {
     expect(JSON.parse(storage.get(QUARANTINE_STORAGE_KEY) ?? '[]')).toHaveLength(1);
   });
 });
+
+describe('importMap', () => {
+  beforeEach(() => vi.resetModules());
+
+  it('returns stale when an older export shares an id with a newer library map', async () => {
+    stubStorage({});
+    const { useLibraryStore } = await import('@/stores/library-store');
+    const map = useLibraryStore.getState().createMap('Live');
+    const live = useLibraryStore.getState().maps.find((m) => m.id === map)!;
+    live.updatedAt = '2026-03-01T00:00:00.000Z';
+    useLibraryStore.setState({ maps: [live] });
+    const stale = { ...live, name: 'Old export', updatedAt: '2026-01-01T00:00:00.000Z' };
+    const result = useLibraryStore.getState().importMap(stale);
+    expect(result).toEqual({ ok: false, reason: 'stale', existingName: 'Live' });
+    expect(useLibraryStore.getState().maps[0].name).toBe('Live');
+  });
+
+  it('replaces when force is set after a stale verdict', async () => {
+    stubStorage({});
+    const { useLibraryStore } = await import('@/stores/library-store');
+    const map = useLibraryStore.getState().createMap('Live');
+    const live = useLibraryStore.getState().maps.find((m) => m.id === map)!;
+    live.updatedAt = '2026-03-01T00:00:00.000Z';
+    useLibraryStore.setState({ maps: [live] });
+    const stale = { ...live, name: 'Old export', updatedAt: '2026-01-01T00:00:00.000Z' };
+    const result = useLibraryStore.getState().importMap(stale, { force: true });
+    expect(result).toEqual({ ok: true, id: map });
+    expect(useLibraryStore.getState().maps[0].name).toBe('Old export');
+  });
+});

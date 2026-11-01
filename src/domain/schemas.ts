@@ -9,6 +9,8 @@ export type ThemePreference = z.infer<typeof themeSchema>;
 export const settingsSchema = z.object({
   theme: themeSchema.default('system'),
   anthropicApiKey: z.string().default(''),
+  /** When true, the API key is kept in sessionStorage instead of the library IndexedDB blob. */
+  anthropicApiKeySessionOnly: z.boolean().default(false),
 });
 
 export const folderSchema = z.object({
@@ -70,6 +72,13 @@ export const libraryStateSchema = z.object({
   settings: settingsSchema,
 });
 
+export const quarantinedMapSchema = z.object({
+  raw: z.unknown(),
+  reason: z.string(),
+});
+
+export const quarantineListSchema = z.array(quarantinedMapSchema);
+
 export type Settings = z.infer<typeof settingsSchema>;
 export type Folder = z.infer<typeof folderSchema>;
 export type Viewport = z.infer<typeof viewportSchema>;
@@ -87,6 +96,6 @@ export function createDefaultLibraryState(): LibraryState {
     version: 1,
     maps: [],
     folders: [],
-    settings: { theme: 'system', anthropicApiKey: '' },
+    settings: { theme: 'system', anthropicApiKey: '', anthropicApiKeySessionOnly: false },
   };
 }

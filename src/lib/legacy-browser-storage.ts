@@ -1,15 +1,24 @@
+import { z } from 'zod';
 import type { ThemePreference } from '@/domain/schemas';
+import { themeSchema } from '@/domain/schemas';
 
 /** Pre-Vite static app localStorage keys (main branch index.html). */
 export const LEGACY_LIBRARY_KEY = 'mindmaps-library-v1';
 export const LEGACY_SETTINGS_KEY = 'mindmaps-settings-v1';
 export const LEGACY_THEME_KEY = 'mindmaps-theme-v1';
 
-type LegacySettings = {
-  key?: string;
-  model?: string;
-  useAi?: boolean;
-};
+const legacySettingsSchema = z
+  .object({
+    key: z.string().optional(),
+    model: z.string().optional(),
+    useAi: z.boolean().optional(),
+  })
+  .passthrough();
+
+const legacyLibrarySchema = z.object({
+  maps: z.array(z.unknown()),
+  folders: z.array(z.unknown()).optional(),
+});
 
 const parseJson = (raw: string | null): unknown => {
   if (raw == null) return null;
@@ -21,8 +30,8 @@ const parseJson = (raw: string | null): unknown => {
 };
 
 const themeFromLegacy = (raw: string | null): ThemePreference | undefined => {
-  if (raw === 'light' || raw === 'dark') return raw;
-  return undefined;
+  const parsed = themeSchema.safeParse(raw);
+  return parsed.success && parsed.data !== 'system' ? parsed.data : undefined;
 };
 
 /**
@@ -35,26 +44,25 @@ export const readLegacyPersistBlob = (): string | null => {
   const libraryRaw = localStorage.getItem(LEGACY_LIBRARY_KEY);
   if (libraryRaw == null) return null;
 
-  const library = parseJson(libraryRaw);
-  if (typeof library !== 'object' || library === null || !Array.isArray((library as { maps?: unknown }).maps)) {
-    return null;
-  }
+  const libraryJson: unknown = parseJson(libraryRaw);
+  const library = legacyLibrarySchema.safeParse(libraryJson);
+  if (!library.success) return null;
 
-  const legacySettings = parseJson(localStorage.getItem(LEGACY_SETTINGS_KEY)) as LegacySettings | null;
+  const legacySettingsJson = parseJson(localStorage.getItem(LEGACY_SETTINGS_KEY));
+  const legacySettings = legacySettingsSchema.safeParse(legacySettingsJson);
   const legacyTheme = themeFromLegacy(localStorage.getItem(LEGACY_THEME_KEY));
 
   const settings: Record<string, unknown> = {};
-  if (legacySettings && typeof legacySettings === 'object') {
-    if (typeof legacySettings.key === 'string') {
-      settings.anthropicApiKey = legacySettings.key;
+  if (legacySettings.success) {
+    if (typeof legacySettings.data.key === 'string') {
+      settings.anthropicApiKey = legacySettings.data.key;
     }
   }
   if (legacyTheme) settings.theme = legacyTheme;
 
-  const libRec = library as Record<string, unknown>;
   const state: Record<string, unknown> = {
-    maps: libRec.maps,
-    folders: Array.isArray(libRec.folders) ? libRec.folders : [],
+    maps: library.data.maps,
+    folders: library.data.folders ?? [],
     version: 1,
   };
   if (Object.keys(settings).length > 0) state.settings = settings;

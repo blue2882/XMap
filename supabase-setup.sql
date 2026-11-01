@@ -6,6 +6,20 @@ create table if not exists public.mindmap_libraries (
   updated_at timestamptz not null default now()
 );
 
+-- Optional (recommended): keep updated_at authoritative on the server so client clocks
+-- cannot weaken conflict detection. Apply in Supabase SQL Editor when ready:
+-- create or replace function public.touch_mindmap_libraries_updated_at()
+-- returns trigger language plpgsql as $$
+-- begin
+--   new.updated_at := now();
+--   return new;
+-- end;
+-- $$;
+-- drop trigger if exists mindmap_libraries_set_updated_at on public.mindmap_libraries;
+-- create trigger mindmap_libraries_set_updated_at
+--   before update on public.mindmap_libraries
+--   for each row execute function public.touch_mindmap_libraries_updated_at();
+
 alter table public.mindmap_libraries enable row level security;
 
 -- Users can only read and write their own library.

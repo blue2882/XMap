@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,7 +51,7 @@ export function QuarantineDialog({ open, onOpenChange }: QuarantineDialogProps) 
           <DialogTitle>Maps that could not load</DialogTitle>
           <DialogDescription>
             These maps were kept aside during an update. Restore imports them into your library, or
-            dismiss to remove them from this list.
+            dismiss to remove them from this device and stop syncing them from cloud.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[50vh] pr-3">
@@ -93,9 +93,11 @@ export function QuarantineDialog({ open, onOpenChange }: QuarantineDialogProps) 
 }
 
 export function QuarantineButton() {
-  const quarantineRevision = useLibraryStore((s) => s.quarantineRevision);
   const [open, setOpen] = useState(false);
-  const count = useMemo(() => readQuarantineList().length, [quarantineRevision]);
+  const count = useLibraryStore((s) => {
+    void s.quarantineRevision;
+    return readQuarantineList().length;
+  });
 
   useEffect(() => {
     if (count === 0) setOpen(false);

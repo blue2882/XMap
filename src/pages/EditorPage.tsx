@@ -103,15 +103,17 @@ export function EditorPage() {
     commit((prev) => relayoutMap(prev));
   };
 
+  const storedMapId = stored?.id;
+
   useEffect(() => {
-    if (!stored) return;
+    if (!storedMapId) return;
     const el = canvasWrapRef.current;
     if (!el) return;
 
     const runInitialFit = () => {
-      if (initialFitMapIdRef.current === stored.id) return;
+      if (initialFitMapIdRef.current === storedMapId) return;
       if (el.clientWidth === 0 || el.clientHeight === 0) return;
-      initialFitMapIdRef.current = stored.id;
+      initialFitMapIdRef.current = storedMapId;
       canvasRef.current?.fitView(0);
     };
 
@@ -119,7 +121,7 @@ export function EditorPage() {
     const observer = new ResizeObserver(runInitialFit);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [stored?.id]);
+  }, [storedMapId]);
 
   useEditorAutosave(map, !!stored, upsertMap);
 

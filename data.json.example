@@ -1,0 +1,115 @@
+{
+    "folders": [
+        "Genetics",
+        "Anatomy"
+    ],
+    "maps": [
+        {
+            "id": "seed-main",
+            "name": "Sample course map",
+            "folder": "Genetics",
+            "updated": 1793215337319,
+            "root": {
+                "id": "root",
+                "t": "Sample topic",
+                "n": "Course notes for migration tests",
+                "k": "",
+                "c": false,
+                "ch": [
+                    {
+                        "id": "q1",
+                        "t": "Question 1",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q2",
+                        "t": "Question 2",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q3",
+                        "t": "Question 3",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q4",
+                        "t": "Question 4",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q5",
+                        "t": "Question 5",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q6",
+                        "t": "Question 6",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q7",
+                        "t": "Question 7",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    },
+                    {
+                        "id": "q8",
+                        "t": "Question 8",
+                        "n": "Answer notes",
+                        "k": "q",
+                        "c": false,
+                        "ch": []
+                    }
+                ]
+            }
+        },
+        {
+            "id": "seed-untitled",
+            "name": "Untitled map",
+            "folder": "Anatomy",
+            "updated": 1793325952094,
+            "root": {
+                "id": "ur",
+                "t": "Root",
+                "n": "",
+                "k": "",
+                "c": false,
+                "ch": [
+                    {
+                        "id": "det1",
+                        "t": "Floating node",
+                        "n": "",
+                        "k": "",
+                        "c": false,
+                        "ch": [],
+                        "detached": true,
+                        "pos": {
+                            "x": -442.296222321224,
+                            "y": -311.4819053866852
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -4,3 +4,4 @@ dist
 *.local
 .playwright-mcp
 .vite
+/data.json
