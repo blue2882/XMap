@@ -19,6 +19,11 @@ const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
 
+const routerBasename =
+  import.meta.env.BASE_URL === '/'
+    ? undefined
+    : import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export function App() {
   useCloudLibrary();
   useEffect(() => {
@@ -38,7 +43,7 @@ export function App() {
     };
   }, []);
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <ThemeProvider>
         <TooltipProvider>
           <Toaster position="top-center" richColors closeButton />
