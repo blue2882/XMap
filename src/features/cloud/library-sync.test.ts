@@ -254,6 +254,36 @@ describe('startCloudSync auth lifecycle', () => {
     expect(upsertPayload.user_id).toBe('user-b');
     expect(upsertPayload.data.maps).toHaveLength(0);
   });
+
+  it('drops a library left on this device by another account, even after a browser restart', async () => {
+    const leftover = createEmptyMap('Account A leftover map');
+    const { useLibraryStore } = await import('@/stores/library-store');
+    useLibraryStore.setState({ maps: [leftover], folders: [] });
+
+    const persisted = new Map([['mindmaps.library.ownerUserId', 'user-a']]);
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => persisted.get(key) ?? null,
+      setItem: (key: string, value: string) => void persisted.set(key, value),
+      removeItem: (key: string) => void persisted.delete(key),
+    });
+    cloudMocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: 'user-b' } } },
+      error: null,
+    });
+    cloudMocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+    cloudMocks.upsert.mockClear();
+
+    const { pullCloudLibrary } = await import('@/features/cloud/library-sync');
+    await pullCloudLibrary();
+
+    const upsertPayload = cloudMocks.upsert.mock.calls[0]?.[0] as {
+      user_id: string;
+      data: { maps: unknown[] };
+    };
+    expect(upsertPayload.user_id).toBe('user-b');
+    expect(upsertPayload.data.maps).toHaveLength(0);
+    expect(persisted.get('mindmaps.library.ownerUserId')).toBe('user-b');
+  });
 });
 
 describe('push conflict handling', () => {

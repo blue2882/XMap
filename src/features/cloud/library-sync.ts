@@ -22,7 +22,8 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { useLibraryStore } from '@/stores/library-store';
 
 const CLOUD_PUSH_DELAY_MS = 400;
-const LIBRARY_OWNER_SESSION_KEY = 'mindmaps.library.ownerUserId';
+/** Survives tab and browser restarts so a different account cannot inherit this library. */
+const LIBRARY_OWNER_KEY = 'mindmaps.library.ownerUserId';
 const SIGN_OUT_CLEAR_PENDING_KEY = 'mindmaps.library.signOutClearPending';
 let localLibraryClearPromise: Promise<void> = Promise.resolve();
 
@@ -184,9 +185,9 @@ export async function clearLocalLibraryAfterSignOut(): Promise<void> {
   applyingCloud = false;
   writeQuarantineList([]);
   try {
-    sessionStorage.removeItem(LIBRARY_OWNER_SESSION_KEY);
+    localStorage.removeItem(LIBRARY_OWNER_KEY);
   } catch {
-    /* sessionStorage unavailable */
+    /* localStorage unavailable */
   }
   await libraryPersistStorage.removeItem(LIBRARY_STORAGE_KEY);
 }
@@ -250,7 +251,7 @@ const handleSignedOut = (): void => {
 
 const readBoundLibraryUserId = (): string | null => {
   try {
-    return sessionStorage.getItem(LIBRARY_OWNER_SESSION_KEY);
+    return localStorage.getItem(LIBRARY_OWNER_KEY);
   } catch {
     return null;
   }
@@ -258,9 +259,9 @@ const readBoundLibraryUserId = (): string | null => {
 
 const markLibraryBoundToUser = (userId: string): void => {
   try {
-    sessionStorage.setItem(LIBRARY_OWNER_SESSION_KEY, userId);
+    localStorage.setItem(LIBRARY_OWNER_KEY, userId);
   } catch {
-    /* sessionStorage unavailable */
+    /* localStorage unavailable */
   }
 };
 
