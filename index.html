@@ -360,7 +360,7 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
 <div id="toast" hidden></div>
 
 <script src="jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 (function () {
   var LKEY = 'mindmaps-library-v1';
@@ -374,8 +374,17 @@ kbd { font:600 12px var(--f-mono); color:var(--ink); background:color-mix(in srg
 var sbClient=null, sbUser=null, cloudTimer=null, cloudBusy=false, cloudAgain=false, cloudChannel=null, lastCloudStamp=0;
 
 /* Supabase connection settings */
-var SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
-var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Zyw8kNPadT5DJVgfIR9iAg_2o00OZrU';
+var SBKEY = 'mindmaps-supabase-v1';
+var DEFAULT_SUPABASE_URL = 'https://mvkavyeptcatpteuzpbg.supabase.co';
+var DEFAULT_SUPABASE_KEY = 'sb_publishable_Zyw8kNPadT5DJVgfIR9iAg_2o00OZrU';
+var SUPABASE_URL = DEFAULT_SUPABASE_URL;
+var SUPABASE_PUBLISHABLE_KEY = DEFAULT_SUPABASE_KEY;
+var authSub = null;
+/* Saved per-browser overrides (from "Supabase connection settings") win over the defaults. */
+try {
+  var savedSb = JSON.parse(localStorage.getItem(SBKEY) || 'null');
+  if (savedSb && savedSb.url && savedSb.key) { SUPABASE_URL = savedSb.url; SUPABASE_PUBLISHABLE_KEY = savedSb.key; }
+} catch (e) {}
 
 function setAuthMessage(msg){
   var el=$('authMessage');
@@ -390,6 +399,8 @@ function authStatus(msg){
 function initSupabase(){
   if($('sbUrl')) $('sbUrl').value=SUPABASE_URL;
   if($('sbKey')) $('sbKey').value=SUPABASE_PUBLISHABLE_KEY;
+
+  if(sbClient) return true; /* reuse the single client */
 
   if(!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY ||
      !window.supabase || !window.supabase.createClient){
@@ -442,7 +453,9 @@ function syncCloudNow(){
   function refreshAuth(){
     if(!initSupabase()){setSignedIn(null);return;}
     sbClient.auth.getSession().then(function(r){if(r.error)throw r.error;var u=r.data.session&&r.data.session.user;setSignedIn(u);if(u){loadCloudLibrary();subscribeCloud();}}).catch(function(e){setAuthMessage(e.message||'Could not check login status.');});
-    sbClient.auth.onAuthStateChange(function(event,session){var u=session&&session.user;setSignedIn(u);if(event==='SIGNED_IN'&&u){setTimeout(function(){loadCloudLibrary();subscribeCloud();},0);$('authBox').hidden=true;} if(event==='SIGNED_OUT'){if(cloudChannel){sbClient.removeChannel(cloudChannel);cloudChannel=null;}} });
+    if(authSub){try{authSub.unsubscribe()}catch(e){} authSub=null;}
+    var sub=sbClient.auth.onAuthStateChange(function(event,session){var u=session&&session.user;setSignedIn(u);if(event==='SIGNED_IN'&&u){setTimeout(function(){loadCloudLibrary();subscribeCloud();},0);$('authBox').hidden=true;} if(event==='SIGNED_OUT'){if(cloudChannel){sbClient.removeChannel(cloudChannel);cloudChannel=null;}} });
+    authSub=sub&&sub.data&&sub.data.subscription||null;
   }
   function authAction(promise,success){setAuthMessage('Please wait…');Promise.resolve(promise).then(function(r){if(r&&r.error)throw r.error;if(success)setAuthMessage(success);else setAuthMessage('Check your email if confirmation is required.');}).catch(function(e){setAuthMessage(e.message||'Authentication failed.');});}
   document.addEventListener('DOMContentLoaded',function(){ });
@@ -1322,7 +1335,7 @@ function syncCloudNow(){
   /* Account and appearance controls */
   $('themeToggle').addEventListener('click',toggleTheme); $('themeToggleEditor').addEventListener('click',toggleTheme);
   $('authToggle').addEventListener('click',function(){$('authBox').hidden=!$('authBox').hidden;if(!$('authBox').hidden)initSupabase();});
-  $('saveSupabase').addEventListener('click',function(){var url=$('sbUrl').value.trim().replace(/\/$/,''),key=$('sbKey').value.trim();if(!/^https:\/\/[a-zA-Z0-9.-]+$/.test(url)||!key){setAuthMessage('Enter a valid Supabase project URL and publishable/anon key.');return;}localStorage.setItem(SBKEY,JSON.stringify({url:url,key:key}));setAuthMessage('Settings saved. Connecting…');refreshAuth();});
+  $('saveSupabase').addEventListener('click',function(){var url=$('sbUrl').value.trim().replace(/\/$/,''),key=$('sbKey').value.trim();if(!/^https:\/\/[a-zA-Z0-9.-]+$/.test(url)||!key){setAuthMessage('Enter a valid Supabase project URL and publishable/anon key.');return;}try{localStorage.setItem(SBKEY,JSON.stringify({url:url,key:key}))}catch(e){}SUPABASE_URL=url;SUPABASE_PUBLISHABLE_KEY=key;if(authSub){try{authSub.unsubscribe()}catch(e){} authSub=null;}if(cloudChannel&&sbClient){try{sbClient.removeChannel(cloudChannel)}catch(e){} cloudChannel=null;}sbClient=null;setAuthMessage('Settings saved. Connecting…');refreshAuth();});
   $('emailSignUp').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}var email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||password.length<6){setAuthMessage('Enter an email and a password of at least 6 characters.');return;}authAction(sbClient.auth.signUp({email:email,password:password,options:{emailRedirectTo:location.origin+location.pathname}}),'Account created. Check your email if confirmation is enabled.');});
   $('emailSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}authAction(sbClient.auth.signInWithPassword({email:$('authEmail').value.trim(),password:$('authPassword').value}));});
   $('googleSignIn').addEventListener('click',function(){if(!sbClient){setAuthMessage('Add your Supabase project URL and publishable/anon key, then save settings.');return;}authAction(sbClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}));});
