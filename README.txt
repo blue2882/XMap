@@ -1,8 +1,11 @@
 Mind Maps — iPadOS 26-inspired web app
 
-HOSTING
-- Host this folder on an HTTPS static site such as Netlify or GitHub Pages.
-- On iPad, open the site in Safari > Share > Add to Home Screen.
+BUILD AND HOSTING
+- This app is TypeScript + React, built with Vite. Do not serve the repo root as the live site.
+- Local development: npm install, then npm run dev (opens the Vite dev server).
+- Production: npm run build, then host the dist/ folder on HTTPS (Netlify, GitHub Pages, etc.).
+- GitHub Pages project site: build with VITE_BASE_PATH=/XMap/ (see .github/workflows/deploy-pages.yml).
+- On iPad, open the deployed site in Safari > Share > Add to Home Screen.
 
 FEATURES
 - iPadOS 26-inspired Liquid Glass interface, adaptive layouts for landscape/portrait and Stage Manager-style window widths, pointer hover feedback, and persistent light/dark toggle.
@@ -17,13 +20,13 @@ SUPABASE SETUP (required to activate login/cloud sync)
 4. In Authentication > Providers, enable Email. Decide whether email confirmation is required; configure SMTP for production email delivery.
 5. For Google login, enable Google in Authentication > Sign In / Providers and enter the OAuth Client ID and secret from Google Cloud Console. Add the Supabase callback URL shown in the provider setup to Google Cloud's authorized redirect URIs.
 6. In Authentication > URL Configuration, set Site URL to your hosted app origin and add the full hosted app URL (including path if applicable) to Redirect URLs. Use HTTPS in production.
-7. Deploy this folder. Open the app, click “Sign in / Create account”, expand “Supabase connection settings”, enter Project URL and publishable/anon key, then save. Sign up with email/password or continue with Google.
+7. Deploy dist/ after npm run build. Open the app, click “Sign in / Create account”, expand “Supabase connection settings”, enter Project URL and publishable/anon key, then save. Sign up with email/password or continue with Google.
 8. Verify a user can only see their own row in public.mindmap_libraries. Do not disable RLS and do not expose service_role credentials.
 
 SYNC NOTES
 - The first successful sign-in uploads this browser's existing library if the account has no cloud library. If the account already has a cloud library, that cloud library replaces the visible local library on this browser. Export important local maps first if needed.
 - Changes save locally immediately and are queued to cloud automatically. Realtime updates bring changes from another signed-in device into the app. Simultaneous edits to the same library use last-write-wins behavior; avoid editing the same account on multiple devices at the exact same time. Export individual maps as JSON for backups.
-- Login requires internet. Local editing and saving still work offline; queued changes sync when connectivity returns only after a subsequent save/reload (this simple static implementation does not provide a durable offline sync queue).
+- Login requires internet. Local editing and saving still work offline; queued changes sync when connectivity returns only after a subsequent save/reload (there is no durable offline sync queue).
 - The Supabase browser client uses only the public publishable/anon key; RLS is the security boundary.
 
 AI IMPORT
