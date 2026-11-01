@@ -4,7 +4,17 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/** GitHub Pages project sites need `/RepoName/`; Netlify and local dev use `/`. */
+const normalizeBase = (raw: string | undefined): string => {
+  if (!raw || raw === '/') return '/';
+  const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+};
+
+const base = normalizeBase(process.env.VITE_BASE_PATH);
+
 export default defineConfig({
+  base,
   test: {
     environment: 'node',
   },
@@ -52,7 +62,7 @@ export default defineConfig({
     target: 'es2022',
     rollupOptions: {
       output: {
-        manualChunks(id) {
+        manualChunks(id): string | undefined {
           if (id.includes('node_modules/react-dom')) return 'react-dom';
           if (id.includes('node_modules/react/')) return 'react';
           if (id.includes('node_modules/react-router')) return 'router';
@@ -61,6 +71,7 @@ export default defineConfig({
           if (id.includes('node_modules/jszip')) return 'jszip';
           if (id.includes('node_modules/lucide-react')) return 'icons';
           if (id.includes('node_modules/zod')) return 'zod';
+          return undefined;
         },
       },
     },

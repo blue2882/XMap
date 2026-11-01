@@ -1,6 +1,10 @@
 import { del, get, set } from 'idb-keyval';
 import type { StateStorage } from 'zustand/middleware';
 import { LIBRARY_STORAGE_KEY } from '@/domain/schemas';
+import {
+  clearLegacyBrowserStorage,
+  readLegacyPersistBlob,
+} from '@/lib/legacy-browser-storage';
 
 function localStorageAdapter(): StateStorage {
   return {
@@ -23,12 +27,16 @@ function indexedDbAdapter(): StateStorage {
       const fromIdb = await get<string>(name);
       if (fromIdb != null) return fromIdb;
 
-      const legacy = localStorage.getItem(name);
-      if (legacy != null) {
-        await set(name, legacy);
+      let blob = localStorage.getItem(name);
+      if (blob == null && name === LIBRARY_STORAGE_KEY) {
+        blob = readLegacyPersistBlob();
+        if (blob != null) clearLegacyBrowserStorage();
+      }
+      if (blob != null) {
+        await set(name, blob);
         localStorage.removeItem(name);
       }
-      return legacy;
+      return blob;
     },
     setItem: async (name, value) => {
       await set(name, value);
