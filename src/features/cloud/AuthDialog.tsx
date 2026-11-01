@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { notify } from '@/lib/notify';
-import { supabase } from '@/lib/supabase';
+import { getAuthRedirectUrl, supabase } from '@/lib/supabase';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -49,7 +49,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         () =>
           supabase.auth.signUp({
             ...credentials,
-            options: { emailRedirectTo: window.location.origin },
+            options: { emailRedirectTo: getAuthRedirectUrl() },
           }),
         'Account created. Check your email if confirmation is on.',
       );
@@ -105,7 +105,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               () =>
                 supabase.auth.signInWithOAuth({
                   provider: 'google',
-                  options: { redirectTo: window.location.origin },
+                  options: { redirectTo: getAuthRedirectUrl() },
                 }),
               'Continuing with Google',
             );

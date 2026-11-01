@@ -16,3 +16,8 @@ export const supabase: SupabaseClient = createClient(url, key, {
     detectSessionInUrl: true,
   },
 });
+
+/** OAuth / email links must include Vite `base` (e.g. `/XMap/` on GitHub Pages). */
+export const getAuthRedirectUrl = (): string =>
+  new URL(import.meta.env.BASE_URL, window.location.origin).href;
+
