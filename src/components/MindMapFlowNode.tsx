@@ -253,9 +253,8 @@ export function MindMapFlowNode({ id, data }: NodeProps<Node<MindMapFlowNodeData
             onPointerDown={stopEditPointerPropagation}
             onKeyDown={handleEditKeyDown}
             className={cn(
-              'block w-full resize-none overflow-hidden rounded-md border-none px-1 outline-none focus:ring-0',
+              'block w-full resize-none overflow-hidden rounded-md border-none bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1 text-inherit caret-current outline-none focus:ring-0',
               labelClass(depth),
-              depth === 0 ? 'bg-white/10' : 'bg-sunken',
             )}
           />
         ) : (
