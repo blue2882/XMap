@@ -3,6 +3,7 @@ import {
   useRef,
   type ChangeEvent,
   type CSSProperties,
+  type FocusEvent,
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
@@ -157,16 +158,16 @@ export function MindMapFlowNode({ id, data }: NodeProps<Node<MindMapFlowNodeData
     handlers?.setEditText(event.target.value);
   };
 
-  const handleEditBlur = () => {
+  const handleEditBlur = (event: FocusEvent<HTMLTextAreaElement>) => {
     if (!handlers) return;
-    handlers.onEditEnd(id, handlers.editText);
+    handlers.onEditEnd(id, event.currentTarget.value);
   };
 
   const handleEditKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (!handlers) return;
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      handlers.onEditEnd(id, handlers.editText);
+      handlers.onEditEnd(id, event.currentTarget.value);
     }
     if (event.key === 'Escape') {
       handlers.onEditEnd(id, domainNode.text);
@@ -253,7 +254,7 @@ export function MindMapFlowNode({ id, data }: NodeProps<Node<MindMapFlowNodeData
             onPointerDown={stopEditPointerPropagation}
             onKeyDown={handleEditKeyDown}
             className={cn(
-              'block w-full resize-none overflow-hidden rounded-md border-none bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1 text-inherit caret-current outline-none focus:ring-0',
+              'nodrag nopan block w-full resize-none overflow-hidden rounded-md border-none bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1 text-inherit caret-current outline-none focus:ring-0',
               labelClass(depth),
             )}
           />

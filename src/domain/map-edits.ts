@@ -1,4 +1,4 @@
-import { COLUMN_GAP, layoutMindMap, ROOT_GAP, SIBLING_GAP } from '@/domain/mindmap-layout';
+import { layoutGapsOf, layoutMindMap, type LayoutGaps } from '@/domain/mindmap-layout';
 import { NODE_W, nodeBounds, separateBoxes, type Box } from '@/domain/node-geometry';
 import { createId } from '@/lib/id';
 import type { MindMapDocument, MindMapEdge, MindMapNode } from '@/domain/schemas';
@@ -40,7 +40,8 @@ function slotBesideParent(
   const parentMidY = parent.y + parentBox.h / 2;
   const siblings = childrenOf(map, parentId).filter((id) => !ignore.has(id));
   const side = parentId === map.rootId ? (siblings.length % 2 === 0 ? -1 : 1) : outwardSide(map, parent);
-  const gap = parentId === map.rootId ? ROOT_GAP : COLUMN_GAP;
+  const gaps = layoutGapsOf(map);
+  const gap = parentId === map.rootId ? gaps.rootGap : gaps.columnGap;
   const x = side > 0 ? parent.x + parentBox.w + gap : parent.x - gap - NODE_W;
   const onSide = siblings
     .map((id) => nodeById(map, id)!)
@@ -48,20 +49,25 @@ function slotBesideParent(
       const midX = node.x + nodeBounds(node).w / 2;
       return side > 0 ? midX >= parentMidX : midX < parentMidX;
     });
-  return { x, y: stackedY(onSide, parentMidY, childH) };
+  return { x, y: stackedY(onSide, parentMidY, childH, gaps.siblingGap) };
 }
 
-function stackedY(onSide: MindMapNode[], parentMidY: number, childH: number): number {
+function stackedY(
+  onSide: MindMapNode[],
+  parentMidY: number,
+  childH: number,
+  siblingGap: number,
+): number {
   if (onSide.length === 0) return parentMidY - childH / 2;
   const center = (node: MindMapNode) => node.y + nodeBounds(node).h / 2;
   const above = onSide.filter((node) => center(node) < parentMidY - 1).length;
   const below = onSide.filter((node) => center(node) > parentMidY + 1).length;
   if (above <= below) {
     const top = Math.min(...onSide.map((node) => node.y));
-    return top - SIBLING_GAP - childH;
+    return top - siblingGap - childH;
   }
   const bottom = Math.max(...onSide.map((node) => node.y + nodeBounds(node).h));
-  return bottom + SIBLING_GAP;
+  return bottom + siblingGap;
 }
 
 function clearOf(
@@ -84,6 +90,11 @@ function outwardSide(map: MindMapDocument, parent: MindMapNode): 1 | -1 {
 
 export function relayoutMap(map: MindMapDocument): MindMapDocument {
   return touch({ ...map, nodes: layoutMindMap(map) });
+}
+
+export function setMapLayout(map: MindMapDocument, patch: Partial<LayoutGaps>): MindMapDocument {
+  const layout = { ...layoutGapsOf(map), ...patch };
+  return relayoutMap({ ...map, layout });
 }
 
 function hiddenByCollapsedAncestor(map: MindMapDocument, nodeId: string): boolean {

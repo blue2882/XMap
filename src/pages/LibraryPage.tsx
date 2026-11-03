@@ -279,9 +279,19 @@ export function LibraryPage() {
               <MapLibraryCard
                 key={map.id}
                 map={map}
+                folders={folders}
                 onOpen={() => navigate(`/editor/${map.id}`)}
                 onRename={() => setPrompt({ kind: 'rename', mapId: map.id, defaultValue: map.name })}
                 onExport={() => handleExportMap(map.id, map.name)}
+                onMove={(folderId) => {
+                  moveMapToFolder(map.id, folderId);
+                  if (folderId === null) {
+                    notify.success('Moved out of folders', map.name);
+                  } else {
+                    const folderName = folders.find((f) => f.id === folderId)?.name ?? 'Folder';
+                    notify.success('Moved to folder', folderName);
+                  }
+                }}
                 onDelete={() => setDeleteMapId(map.id)}
               />
             ))}

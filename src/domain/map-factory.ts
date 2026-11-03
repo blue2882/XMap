@@ -48,6 +48,12 @@ export function cloneMapDocument(map: MindMapDocument, newName?: string): MindMa
       sourceId: idMap.get(edge.sourceId) ?? edge.sourceId,
       targetId: idMap.get(edge.targetId) ?? edge.targetId,
     })),
+    links: (map.links ?? []).map((link) => ({
+      id: createId('link'),
+      sourceId: idMap.get(link.sourceId) ?? link.sourceId,
+      targetId: idMap.get(link.targetId) ?? link.targetId,
+    })),
+    layout: map.layout ? { ...map.layout } : undefined,
     viewport: { ...map.viewport },
     folderId: map.folderId,
     createdAt: now,

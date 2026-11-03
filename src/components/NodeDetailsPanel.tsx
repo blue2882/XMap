@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { fieldClass } from '@/components/ui/input';
 import { BRANCH_COLORS } from '@/domain/colors';
-import { updateNodeText } from '@/domain/map-edits';
+import { setMapLayout, updateNodeText } from '@/domain/map-edits';
+import { layoutGapsOf, type LayoutGaps } from '@/domain/mindmap-layout';
 import {
   canMoveSibling,
   mainBranchId,
@@ -46,7 +47,12 @@ function kindLabel(map: MindMapDocument, nodeId: string | null): string {
 }
 
 export function NodeDetailsPanel({ map, selectedId, onCommit, onClose, className }: Props) {
-  const node = selectedId ? map.nodes.find((n) => n.id === selectedId) : undefined;
+  // A canvas click clears selection. Keep the open node's fields on screen.
+  const retainedIdRef = useRef<string | null>(null);
+  if (selectedId) retainedIdRef.current = selectedId;
+  const activeId = selectedId ?? retainedIdRef.current;
+  const node = activeId ? map.nodes.find((n) => n.id === activeId) : undefined;
+  if (activeId && !node) retainedIdRef.current = null;
   const isRoot = node?.id === map.rootId;
   const branchId = node ? mainBranchId(map, node.id) : null;
   const branchColorIndex = branchId ? map.nodes.find((n) => n.id === branchId)?.colorIndex : undefined;
@@ -84,8 +90,9 @@ export function NodeDetailsPanel({ map, selectedId, onCommit, onClose, className
         className,
       )}
     >
+      <MapSpacing map={map} onCommit={onCommit} />
       <div className="flex items-center justify-between gap-2">
-        <h2 className={labelClass}>{kindLabel(map, selectedId)}</h2>
+        <h2 className={labelClass}>{kindLabel(map, node?.id ?? null)}</h2>
         <IconButton label="Close details" size="icon-sm" onClick={onClose}>
           <X />
         </IconButton>
@@ -200,6 +207,38 @@ export function NodeDetailsPanel({ map, selectedId, onCommit, onClose, className
   );
 }
 
+const SPACING_FIELDS: { key: keyof LayoutGaps; label: string }[] = [
+  { key: 'rootGap', label: 'Root gap' },
+  { key: 'columnGap', label: 'Column gap' },
+  { key: 'siblingGap', label: 'Sibling gap' },
+];
+
+function MapSpacing({ map, onCommit }: { map: MindMapDocument; onCommit: Commit }) {
+  const gaps = layoutGapsOf(map);
+  return (
+    <div className="flex flex-col gap-2">
+      <span className={labelClass}>This map</span>
+      {SPACING_FIELDS.map(({ key, label }) => (
+        <label key={key} className="flex items-center justify-between gap-3 text-sm">
+          <span>{label}</span>
+          <input
+            type="range"
+            aria-label={label}
+            min={key === 'rootGap' ? 40 : key === 'columnGap' ? 24 : 0}
+            max={key === 'rootGap' ? 200 : key === 'columnGap' ? 160 : 48}
+            value={gaps[key]}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              onCommit((prev) => setMapLayout(prev, { [key]: value }));
+            }}
+            className="w-28 accent-accent"
+          />
+        </label>
+      ))}
+    </div>
+  );
+}
+
 type TextDraftProps = {
   label: string;
   value: string;
@@ -214,6 +253,7 @@ function TextDraft({ label, value, disabled, multiline = false, placeholder, onC
   const [draft, setDraft] = useState(value);
   const id = `node-${label.toLowerCase()}`;
   const commit = () => {
+    if (disabled) return;
     if (draft !== value) onCommit(draft);
   };
 

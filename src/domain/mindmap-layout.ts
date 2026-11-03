@@ -5,6 +5,27 @@ export const ROOT_GAP = 96;
 export const COLUMN_GAP = 64;
 export const SIBLING_GAP = 14;
 
+export type LayoutGaps = { rootGap: number; columnGap: number; siblingGap: number };
+
+const GAP_LIMITS = {
+  rootGap: { min: 40, max: 200, fallback: ROOT_GAP },
+  columnGap: { min: 24, max: 160, fallback: COLUMN_GAP },
+  siblingGap: { min: 0, max: 48, fallback: SIBLING_GAP },
+} as const;
+
+const clampGap = (key: keyof LayoutGaps, value: number | undefined): number => {
+  const limit = GAP_LIMITS[key];
+  if (typeof value !== 'number' || !Number.isFinite(value)) return limit.fallback;
+  return Math.min(limit.max, Math.max(limit.min, value));
+};
+
+/** Each map stores its own gaps. Missing values stay at the built-in spacing. */
+export const layoutGapsOf = (map: MindMapDocument): LayoutGaps => ({
+  rootGap: clampGap('rootGap', map.layout?.rootGap),
+  columnGap: clampGap('columnGap', map.layout?.columnGap),
+  siblingGap: clampGap('siblingGap', map.layout?.siblingGap),
+});
+
 type Side = 1 | -1;
 type Anchor = { x: number; w: number };
 
@@ -38,10 +59,11 @@ export function layoutMindMap(map: MindMapDocument): MindMapNode[] {
     queue.push(...kids);
   }
 
+  const gaps = layoutGapsOf(map);
   const size = (id: string) => nodeBounds(byId.get(id)!);
   const blockHeights = new Map<string, number>();
   const stack = (ids: string[]): number =>
-    ids.reduce((sum, id, i) => sum + blockHeights.get(id)! + (i > 0 ? SIBLING_GAP : 0), 0);
+    ids.reduce((sum, id, i) => sum + blockHeights.get(id)! + (i > 0 ? gaps.siblingGap : 0), 0);
   const measure = (id: string): number => {
     const kids = tree.get(id) ?? [];
     kids.forEach(measure);
@@ -59,7 +81,7 @@ export function layoutMindMap(map: MindMapDocument): MindMapNode[] {
       const b = size(id);
       const x = side > 0 ? parent.x + parent.w + gap : parent.x - gap - b.w;
       place(id, x, cursor, side);
-      cursor += blockHeights.get(id)! + SIBLING_GAP;
+      cursor += blockHeights.get(id)! + gaps.siblingGap;
     }
   };
 
@@ -68,7 +90,7 @@ export function layoutMindMap(map: MindMapDocument): MindMapNode[] {
     const block = blockHeights.get(id)!;
     const kids = tree.get(id) ?? [];
     positions.set(id, { x, y: top + (block - b.h) / 2 });
-    placeChildren(kids, { x, w: b.w }, top + (block - stack(kids)) / 2, side, COLUMN_GAP);
+    placeChildren(kids, { x, w: b.w }, top + (block - stack(kids)) / 2, side, gaps.columnGap);
   };
 
   const rootBounds = size(root.id);
@@ -76,8 +98,8 @@ export function layoutMindMap(map: MindMapDocument): MindMapNode[] {
   const rootAnchor = { x: root.x, w: rootBounds.w };
   const [rightIds, leftIds] = splitAlternate(tree.get(root.id) ?? []);
 
-  placeChildren(rightIds, rootAnchor, rootCenterY - stack(rightIds) / 2, 1, ROOT_GAP);
-  placeChildren(leftIds, rootAnchor, rootCenterY - stack(leftIds) / 2, -1, ROOT_GAP);
+  placeChildren(rightIds, rootAnchor, rootCenterY - stack(rightIds) / 2, 1, gaps.rootGap);
+  placeChildren(leftIds, rootAnchor, rootCenterY - stack(leftIds) / 2, -1, gaps.rootGap);
 
   return map.nodes.map((node) => {
     const point = positions.get(node.id);

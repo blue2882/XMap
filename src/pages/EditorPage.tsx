@@ -17,6 +17,7 @@ import {
   deleteNode,
   neighborNodeId,
   relayoutMap,
+  renameMap,
   reparentNode,
   toggleNodeCollapsed,
   moveSubtree,
@@ -35,6 +36,51 @@ import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 import { notify } from '@/lib/notify';
 import { EDITOR_TOUR_KEY, startEditorTour, tourSeen } from '@/features/tour/start-tour';
 import { useLibraryStore } from '@/stores/library-store';
+
+function MapNameField({ name, onCommit }: { name: string; onCommit: (name: string) => void }) {
+  const [draft, setDraft] = useState(name);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(name);
+  }, [editing, name]);
+
+  const finish = () => {
+    setEditing(false);
+    if (draft.trim() && draft.trim() !== name) onCommit(draft);
+    else setDraft(name);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="type-title min-w-0 flex-1 truncate rounded-md px-1 text-left text-xl outline-none hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent sm:flex-none"
+        onClick={() => setEditing(true)}
+      >
+        {name}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      autoFocus
+      aria-label="Map title"
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={finish}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+        if (event.key === 'Escape') {
+          setDraft(name);
+          setEditing(false);
+        }
+      }}
+      className="type-title min-w-0 flex-1 rounded-md border border-line bg-raised px-2 py-1 text-xl outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-64 sm:flex-none"
+    />
+  );
+}
 
 const VIEWPORT_ZOOM_STEP = 1.12;
 const VIEWPORT_SCALE_MIN = 0.35;
@@ -304,7 +350,7 @@ export function EditorPage() {
               <ArrowLeft />
             </Link>
           </IconButton>
-          <h1 className="type-title min-w-0 flex-1 truncate text-xl sm:flex-none">{map.name}</h1>
+          <MapNameField name={map.name} onCommit={(name) => commit((prev) => renameMap(prev, name))} />
         </div>
         <EditorMapToolbar
           className="w-full sm:order-3 sm:w-auto lg:order-0"

@@ -181,15 +181,18 @@ function MapFlowInner(
     ? map.nodes.find((n) => n.id === drag.targetId)?.text
     : undefined;
 
+  const nodesRef = useRef(map.nodes);
+  nodesRef.current = map.nodes;
+
   useEffect(() => {
-    if (editingId) {
-      const node = map.nodes.find((n) => n.id === editingId);
-      setEditText(node?.text ?? '');
+    if (!editingId) {
       setEditBoxHeightState(undefined);
-    } else {
-      setEditBoxHeightState(undefined);
+      return;
     }
-  }, [editingId, map.nodes]);
+    const node = nodesRef.current.find((n) => n.id === editingId);
+    setEditText(node?.text ?? '');
+    setEditBoxHeightState(undefined);
+  }, [editingId]);
 
   useEffect(() => {
     setMindMapNodeEditorHandlers({
@@ -309,6 +312,7 @@ function MapFlowInner(
         if (edge.id.startsWith('mlink_')) onRemoveLink(edge.id.slice('mlink_'.length));
       }}
       onMoveEnd={onMoveEnd}
+      onNodeDoubleClick={(_event, node) => onEditStart(node.id)}
       onNodeDragStart={onNodeDragStart}
       onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}

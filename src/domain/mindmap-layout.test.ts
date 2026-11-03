@@ -22,6 +22,17 @@ const centerX = (map: MindMapDocument, id: string): number => {
 };
 
 describe('layoutMindMap', () => {
+  it('uses the gap stored on that map', () => {
+    const { map, ids } = build(1);
+    const tight = layoutMindMap({ ...map, layout: { rootGap: 40, columnGap: 24, siblingGap: 0 } });
+    const loose = layoutMindMap({ ...map, layout: { rootGap: 200, columnGap: 160, siblingGap: 48 } });
+    const child = (nodes: ReturnType<typeof layoutMindMap>) => nodes.find((n) => n.id === ids[0])!;
+    const root = (nodes: ReturnType<typeof layoutMindMap>) => nodes.find((n) => n.id === map.rootId)!;
+    const distance = (nodes: ReturnType<typeof layoutMindMap>) =>
+      Math.abs(child(nodes).x - (root(nodes).x + nodeBounds(root(nodes)).w));
+    expect(distance(loose)).toBeGreaterThan(distance(tight));
+  });
+
   it('puts the first child on the left and the next on the right', () => {
     const { map, ids } = build(3);
     const laid = layoutMindMap(map);

@@ -52,6 +52,13 @@ export const mindMapLinkSchema = z.object({
   targetId: z.string(),
 });
 
+/** Spacing used by tidy layout. Omitted maps keep the built-in gaps. */
+export const mapLayoutSchema = z.object({
+  rootGap: z.number().min(40).max(200),
+  columnGap: z.number().min(24).max(160),
+  siblingGap: z.number().min(0).max(48),
+});
+
 export const mindMapDocumentSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -59,6 +66,7 @@ export const mindMapDocumentSchema = z.object({
   nodes: z.array(mindMapNodeSchema),
   edges: z.array(mindMapEdgeSchema),
   links: z.array(mindMapLinkSchema).default([]),
+  layout: mapLayoutSchema.optional(),
   viewport: viewportSchema,
   folderId: z.string().nullable(),
   createdAt: z.string(),

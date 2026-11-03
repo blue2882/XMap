@@ -7,22 +7,39 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { MindMapDocument } from '@/domain/schemas';
+import type { Folder, MindMapDocument } from '@/domain/schemas';
 import { formatCount, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
+const NO_FOLDER = 'none';
+
 type Props = {
   map: MindMapDocument;
+  folders: Folder[];
   onOpen: () => void;
   onRename: () => void;
   onExport: () => void;
+  onMove: (folderId: string | null) => void;
   onDelete: () => void;
 };
 
-export function MapLibraryCard({ map, onOpen, onRename, onExport, onDelete }: Props) {
+export function MapLibraryCard({
+  map,
+  folders,
+  onOpen,
+  onRename,
+  onExport,
+  onMove,
+  onDelete,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: map.id,
     data: { type: 'map' as const, mapId: map.id },
@@ -40,7 +57,7 @@ export function MapLibraryCard({ map, onOpen, onRename, onExport, onDelete }: Pr
       )}
     >
       <div
-        className="relative aspect-16/10 cursor-grab bg-sunken bg-[radial-gradient(circle,var(--color-dot)_1px,transparent_1px)] bg-size-[14px_14px] active:cursor-grabbing"
+        className="relative z-10 aspect-16/10 cursor-grab bg-sunken bg-[radial-gradient(circle,var(--color-dot)_1px,transparent_1px)] bg-size-[14px_14px] active:cursor-grabbing"
         {...listeners}
         {...attributes}
       >
@@ -57,6 +74,22 @@ export function MapLibraryCard({ map, onOpen, onRename, onExport, onDelete }: Pr
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
               <DropdownMenuItem onSelect={onExport}>Export JSON</DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Move to folder</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={map.folderId ?? NO_FOLDER}
+                    onValueChange={(value) => onMove(value === NO_FOLDER ? null : value)}
+                  >
+                    <DropdownMenuRadioItem value={NO_FOLDER}>No folder</DropdownMenuRadioItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuRadioItem key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={onDelete}>
                 Delete
@@ -70,7 +103,7 @@ export function MapLibraryCard({ map, onOpen, onRename, onExport, onDelete }: Pr
           type="button"
           data-open
           onClick={onOpen}
-          className="type-title line-clamp-2 text-left outline-none after:absolute after:inset-0 after:content-['']"
+          className="type-title relative z-0 line-clamp-2 text-left outline-none after:absolute after:inset-0 after:-z-10 after:content-['']"
         >
           {map.name}
         </button>
