@@ -6,14 +6,15 @@ const DEFAULT_VIEWPORT = { x: 0, y: 0, scale: 1 };
 export function createEmptyMap(name: string, folderId: string | null = null): MindMapDocument {
   const rootId = createId('node');
   const now = new Date().toISOString();
+  const title = name.trim() || 'Untitled map';
   return {
     id: createId('map'),
-    name: name.trim() || 'Untitled map',
+    name: title,
     rootId,
     nodes: [
       {
         id: rootId,
-        text: name.trim() || 'Central idea',
+        text: title,
         x: 0,
         y: 0,
         colorIndex: 0,
@@ -35,13 +36,15 @@ export function cloneMapDocument(map: MindMapDocument, newName?: string): MindMa
     idMap.set(node.id, createId('node'));
   }
   const newRootId = idMap.get(map.rootId) ?? createId('node');
+  const title = newName ?? `${map.name} copy`;
   return {
     id: createId('map'),
-    name: newName ?? `${map.name} copy`,
+    name: title,
     rootId: newRootId,
     nodes: map.nodes.map((node) => ({
       ...node,
       id: idMap.get(node.id) ?? createId('node'),
+      text: node.id === map.rootId ? title : node.text,
     })),
     edges: map.edges.map((edge) => ({
       id: createId('edge'),

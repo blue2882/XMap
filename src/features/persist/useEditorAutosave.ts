@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { MindMapDocument } from '@/domain/schemas';
 import { flushLibraryToDisk } from '@/features/persist/library-autosave';
 import { useLibraryStore } from '@/stores/library-store';
@@ -23,13 +23,15 @@ export function useEditorAutosave(
   upsertMap: (map: MindMapDocument) => void,
 ) {
   const mapRef = useRef(map);
+  const upsertRef = useRef(upsertMap);
   mapRef.current = map;
+  upsertRef.current = upsertMap;
 
-  const upsertIfNotStale = () => {
+  const upsertIfNotStale = useCallback(() => {
     const current = mapRef.current;
     if (shouldSkipUpsertForNewerStoreMap(current)) return;
-    upsertMap(current);
-  };
+    upsertRef.current(current);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -37,7 +39,7 @@ export function useEditorAutosave(
       upsertIfNotStale();
     }, EDITOR_FLUSH_DEBOUNCE_MS);
     return () => window.clearTimeout(id);
-  }, [map, enabled, upsertMap]);
+  }, [map, enabled, upsertIfNotStale]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -45,7 +47,7 @@ export function useEditorAutosave(
       upsertIfNotStale();
     }, EDITOR_FLUSH_HEARTBEAT_MS);
     return () => window.clearInterval(id);
-  }, [enabled, upsertMap]);
+  }, [enabled, upsertIfNotStale]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -62,5 +64,5 @@ export function useEditorAutosave(
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [enabled, upsertMap]);
+  }, [enabled, upsertIfNotStale]);
 }

@@ -1,5 +1,5 @@
 import { createEmptyMap } from '@/domain/map-factory';
-import { addChildNode } from '@/domain/map-edits';
+import { addChildNode, updateNodeText } from '@/domain/map-edits';
 import type { MindMapDocument } from '@/domain/schemas';
 import type { PptxSlidePayload } from '@/features/import/pptx';
 import { sanitizeAnthropicError } from '@/features/import/ai-import-errors';
@@ -122,10 +122,7 @@ export async function importWithAnthropic(input: AiImportInput): Promise<MindMap
   const mapTitle = parsed.title?.trim() || title;
   let map = createEmptyMap(mapTitle);
   const rootText = parsed.root?.trim() || mapTitle;
-  map = {
-    ...map,
-    nodes: map.nodes.map((n) => (n.id === map.rootId ? { ...n, text: rootText } : n)),
-  };
+  map = updateNodeText(map, map.rootId, rootText);
   if (parsed.nodes?.length) {
     map = applyTree(map, map.rootId, parsed.nodes, {
       remaining: AI_IMPORT_LIMITS.maxNodesTotal,

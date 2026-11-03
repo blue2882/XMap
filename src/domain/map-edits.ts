@@ -176,9 +176,11 @@ export function updateNodeText(
   nodeId: string,
   text: string,
 ): MindMapDocument {
+  const nextText = nodeId === map.rootId ? text.trim() || map.name : text;
   return touch({
     ...map,
-    nodes: map.nodes.map((n) => (n.id === nodeId ? { ...n, text } : n)),
+    name: nodeId === map.rootId ? nextText : map.name,
+    nodes: map.nodes.map((n) => (n.id === nodeId ? { ...n, text: nextText } : n)),
   });
 }
 
@@ -308,7 +310,12 @@ export function deleteNode(map: MindMapDocument, nodeId: string): MindMapDocumen
 }
 
 export function renameMap(map: MindMapDocument, name: string): MindMapDocument {
-  return touch({ ...map, name: name.trim() || map.name });
+  const nextName = name.trim() || map.name;
+  return touch({
+    ...map,
+    name: nextName,
+    nodes: map.nodes.map((n) => (n.id === map.rootId ? { ...n, text: nextName } : n)),
+  });
 }
 
 export function neighborNodeId(

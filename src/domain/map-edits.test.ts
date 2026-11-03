@@ -4,12 +4,29 @@ import {
   addSiblingNode,
   deleteNode,
   relayoutMap,
+  renameMap,
   reparentNode,
+  updateNodeText,
 } from '@/domain/map-edits';
 import { createEmptyMap } from '@/domain/map-factory';
 import { setNodeDetached } from '@/domain/node-detach';
 
 describe('map tree edits', () => {
+  it('keeps the map name and root node text as the same string', () => {
+    const map = createEmptyMap('Test');
+    const root = () => map.nodes.find((n) => n.id === map.rootId);
+    expect(map.name).toBe('Test');
+    expect(root()?.text).toBe(map.name);
+
+    const renamed = renameMap(map, 'Renamed');
+    expect(renamed.name).toBe('Renamed');
+    expect(renamed.nodes.find((n) => n.id === map.rootId)?.text).toBe(renamed.name);
+
+    const edited = updateNodeText(renamed, renamed.rootId, 'From the node');
+    expect(edited.name).toBe('From the node');
+    expect(edited.nodes.find((n) => n.id === map.rootId)?.text).toBe(edited.name);
+  });
+
   it('addChildNode increases the number of nodes', () => {
     const map = createEmptyMap('Test');
     const { map: next, newNodeId } = addChildNode(map, map.rootId, 'Child');

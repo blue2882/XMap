@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { createEmptyMap } from '@/domain/map-factory';
-import { addChildNode } from '@/domain/map-edits';
+import { addChildNode, updateNodeText } from '@/domain/map-edits';
 import type { MindMapDocument } from '@/domain/schemas';
 
 export const MAX_PPTX_FILE_BYTES = 25 * 1024 * 1024;
@@ -137,12 +137,7 @@ export async function importPptxFile(file: File, title?: string): Promise<MindMa
     return map;
   }
   const rootText = slides[0].slice(0, 120) || deckName;
-  map = {
-    ...map,
-    nodes: map.nodes.map((n) =>
-      n.id === map.rootId ? { ...n, text: rootText } : n,
-    ),
-  };
+  map = updateNodeText(map, map.rootId, rootText);
   for (let i = 1; i < slides.length; i++) {
     const label = slides[i].slice(0, 80) || `Slide ${i + 1}`;
     const { map: next } = addChildNode(map, map.rootId, label);
